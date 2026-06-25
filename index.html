@@ -1,47 +1,229 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Mango Vista Enterprise</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mango Vista Order Form</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #f39c12;
+        }
+
+        label {
+            display: block;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        #deliveryMessage {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 5px;
+            background: #e8f5e9;
+            color: green;
+            display: none;
+        }
+
+        #totalAmount {
+            background: #fff8dc;
+            font-weight: bold;
+            color: red;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 20px;
+            border: none;
+            background: #f39c12;
+            color: white;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .invoice {
+            display: none;
+            margin-top: 30px;
+            border: 2px solid #ddd;
+            padding: 20px;
+            background: #fff;
+        }
+
+        .thankyou {
+            margin-top: 20px;
+            color: green;
+            font-weight: bold;
+            text-align: center;
+        }
+    </style>
 </head>
+
 <body>
-<div class="container py-4">
-<div class="card shadow p-4">
-<h2 class="text-center">Mango Vista Order Management</h2>
 
-<input class="form-control mb-2" id="name" placeholder="Customer Name">
-<input class="form-control mb-2" id="phone" placeholder="Phone Number">
-<textarea class="form-control mb-2" id="address" placeholder="Address"></textarea>
+<div class="container">
 
-<select class="form-select mb-2" id="state">
-<option>Dubai</option>
-<option>Sharjah</option>
-</select>
+    <h1>🥭 Mango Vista Order Form</h1>
 
-<input class="form-control mb-2" type="number" id="boxes" placeholder="Boxes">
-<input class="form-control mb-2" type="number" id="price" value="45">
+    <label>Customer Name</label>
+    <input type="text" id="name" required>
 
-<select class="form-select mb-2" id="slot">
-<option>09AM-01PM</option>
-<option>02PM-05PM</option>
-</select>
+    <label>Phone Number</label>
+    <input type="text" id="phone" required>
 
-<input class="form-control mb-2" type="date" id="date">
+    <label>Address</label>
+    <textarea id="address"></textarea>
 
-<h4>Total AED: <span id="total">0</span></h4>
+    <label>Select Area</label>
+    <select id="area" onchange="updateArea()">
+        <option value="">Select Area</option>
+        <option value="Dubai">Dubai</option>
+        <option value="Sharjah">Sharjah</option>
+    </select>
 
-<button class="btn btn-success" onclick="calculate()">Calculate</button>
-<button class="btn btn-primary" onclick="downloadPDF()">Download Bill</button>
+    <div id="deliveryMessage"></div>
 
-<hr>
-<p>Delivery within Dubai is completed within one day.</p>
-<p>Outside Dubai orders are confirmed on weekends only.</p>
+    <label>Number of Boxes</label>
+    <input type="number" id="boxes" min="1" oninput="calculateTotal()">
+
+    <label>Total Amount</label>
+    <input type="text" id="totalAmount" readonly>
+
+    <button onclick="generateInvoice()">Place Order</button>
+
+    <div class="invoice" id="invoice">
+
+        <h2>Mango Vista Invoice</h2>
+
+        <p><strong>Name:</strong> <span id="invName"></span></p>
+
+        <p><strong>Phone:</strong> <span id="invPhone"></span></p>
+
+        <p><strong>Address:</strong> <span id="invAddress"></span></p>
+
+        <p><strong>Area:</strong> <span id="invArea"></span></p>
+
+        <p><strong>Boxes:</strong> <span id="invBoxes"></span></p>
+
+        <p><strong>Price Per Box:</strong> 45 AED</p>
+
+        <p><strong>Total Amount:</strong> <span id="invTotal"></span></p>
+
+        <p><strong>Expected Delivery:</strong></p>
+
+        <p id="invDelivery"></p>
+
+        <div class="thankyou">
+            Thank You for Choosing Mango Vista!<br>
+            Your order has been received successfully.<br>
+            We appreciate your business.
+        </div>
+
+    </div>
+
 </div>
-</div>
-<script src="script.js"></script>
+
+<script>
+
+    function updateArea() {
+
+        const area = document.getElementById("area").value;
+        const message = document.getElementById("deliveryMessage");
+
+        message.style.display = "block";
+
+        if(area === "Dubai") {
+            message.innerHTML =
+            "Orders within Dubai will be delivered within 1 day.";
+        }
+
+        if(area === "Sharjah") {
+            message.innerHTML =
+            "Orders outside Dubai will be delivered only on weekends.";
+        }
+
+        calculateTotal();
+    }
+
+    function calculateTotal() {
+
+        const area = document.getElementById("area").value;
+        let boxes = parseInt(document.getElementById("boxes").value) || 0;
+
+        if(area === "Dubai" && boxes < 2 && boxes !== 0) {
+            alert("Minimum order for Dubai is 2 boxes.");
+            boxes = 2;
+            document.getElementById("boxes").value = 2;
+        }
+
+        if(area === "Sharjah" && boxes < 3 && boxes !== 0) {
+            alert("Minimum order for Sharjah is 3 boxes.");
+            boxes = 3;
+            document.getElementById("boxes").value = 3;
+        }
+
+        document.getElementById("totalAmount").value =
+            (boxes * 45) + " AED";
+    }
+
+    function generateInvoice() {
+
+        const name = document.getElementById("name").value;
+        const phone = document.getElementById("phone").value;
+        const address = document.getElementById("address").value;
+        const area = document.getElementById("area").value;
+        const boxes = document.getElementById("boxes").value;
+        const total = document.getElementById("totalAmount").value;
+
+        if(name === "" || phone === "" || area === "" || boxes === "") {
+            alert("Please fill all required fields.");
+            return;
+        }
+
+        document.getElementById("invName").innerText = name;
+        document.getElementById("invPhone").innerText = phone;
+        document.getElementById("invAddress").innerText = address;
+        document.getElementById("invArea").innerText = area;
+        document.getElementById("invBoxes").innerText = boxes;
+        document.getElementById("invTotal").innerText = total;
+
+        if(area === "Dubai") {
+            document.getElementById("invDelivery").innerText =
+            "Orders within Dubai will be delivered within 1 day.";
+        } else {
+            document.getElementById("invDelivery").innerText =
+            "Orders outside Dubai will be delivered only on weekends.";
+        }
+
+        document.getElementById("invoice").style.display = "block";
+    }
+
+</script>
+
 </body>
 </html>
