@@ -1,36 +1,90 @@
-window.onload=function(){
- let d=new Date();
- d.setDate(d.getDate()+1);
- document.getElementById('date').value=d.toISOString().split('T')[0];
-};
+// Price per box
+const PRICE_PER_BOX = 45;
 
-function calculate(){
- let state=document.getElementById('state').value;
- let boxes=parseInt(document.getElementById('boxes').value);
- let price=parseFloat(document.getElementById('price').value);
+// Area selection
+function updateArea() {
+    const area = document.getElementById("area").value;
+    const deliveryMessage = document.getElementById("deliveryMessage");
 
- if(state==='Dubai' && boxes<2){
-   alert('Minimum order for Dubai is 2 boxes');
-   return;
- }
+    deliveryMessage.style.display = "block";
 
- if(state==='Sharjah' && boxes<3){
-   alert('Minimum order for Sharjah is 3 boxes');
-   return;
- }
+    if (area === "Dubai") {
+        deliveryMessage.innerHTML =
+            "Orders within Dubai will be delivered within 1 day.";
+    }
+    else if (area === "Sharjah") {
+        deliveryMessage.innerHTML =
+            "Orders outside Dubai will be delivered only on weekends.";
+    }
 
- document.getElementById('total').innerText=boxes*price;
+    calculateTotal();
 }
 
-function downloadPDF(){
- calculate();
- const { jsPDF } = window.jspdf;
- const doc = new jsPDF();
- doc.text('Mango Vista Invoice',20,20);
- doc.text('Customer: '+document.getElementById('name').value,20,40);
- doc.text('Phone: '+document.getElementById('phone').value,20,50);
- doc.text('Total AED: '+document.getElementById('total').innerText,20,70);
- doc.text('Dubai orders: next day delivery.',20,90);
- doc.text('Outside Dubai: weekends only.',20,100);
- doc.save('invoice.pdf');
+// Calculate total amount
+function calculateTotal() {
+
+    const area = document.getElementById("area").value;
+    let boxes = parseInt(document.getElementById("boxes").value) || 0;
+
+    // Minimum order validation
+    if (area === "Dubai" && boxes > 0 && boxes < 2) {
+        alert("Minimum order for Dubai is 2 boxes.");
+        boxes = 2;
+        document.getElementById("boxes").value = 2;
+    }
+
+    if (area === "Sharjah" && boxes > 0 && boxes < 3) {
+        alert("Minimum order for Sharjah is 3 boxes.");
+        boxes = 3;
+        document.getElementById("boxes").value = 3;
+    }
+
+    // Total amount
+    document.getElementById("totalAmount").value =
+        (boxes * PRICE_PER_BOX) + " AED";
 }
+
+// Generate invoice
+function generateInvoice() {
+
+    const name = document.getElementById("name").value;
+    const phone = document.getElementById("phone").value;
+    const address = document.getElementById("address").value;
+    const area = document.getElementById("area").value;
+    const boxes = document.getElementById("boxes").value;
+    const total = document.getElementById("totalAmount").value;
+
+    if (
+        name === "" ||
+        phone === "" ||
+        area === "" ||
+        boxes === ""
+    ) {
+        alert("Please fill all required fields.");
+        return;
+    }
+
+    document.getElementById("invName").innerText = name;
+    document.getElementById("invPhone").innerText = phone;
+    document.getElementById("invAddress").innerText = address;
+    document.getElementById("invArea").innerText = area;
+    document.getElementById("invBoxes").innerText = boxes;
+    document.getElementById("invTotal").innerText = total;
+
+    if (area === "Dubai") {
+        document.getElementById("invDelivery").innerText =
+            "Orders within Dubai will be delivered within 1 day.";
+    } else {
+        document.getElementById("invDelivery").innerText =
+            "Orders outside Dubai will be delivered only on weekends.";
+    }
+
+    document.getElementById("invoice").style.display = "block";
+}
+
+// Event listeners
+document.getElementById("area")
+    .addEventListener("change", updateArea);
+
+document.getElementById("boxes")
+    .addEventListener("input", calculateTotal);
