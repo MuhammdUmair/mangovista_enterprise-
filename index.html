@@ -148,10 +148,13 @@
         .shadow-hover:hover {
             box-shadow: 0 12px 28px rgba(0, 0, 0, 0.06);
         }
-        /* spinner */
         .spinner-border-sm {
             width: 1.2rem;
             height: 1.2rem;
+        }
+        /* Hidden invoice div (kept for compatibility) */
+        #invoice {
+            display: none;
         }
     </style>
 </head>
@@ -194,7 +197,7 @@
                     </div>
                 </div>
 
-                <!-- Boxes + price (fixed 45 AED) – NO CALCULATE BUTTON, auto-update -->
+                <!-- Boxes + price (fixed 45 AED) – auto-update -->
                 <div class="row g-3 mb-3 align-items-end">
                     <div class="col-7">
                         <label class="form-label">Number of Boxes <span class="required-star">*</span></label>
@@ -207,16 +210,16 @@
                     </div>
                 </div>
 
-                <!-- ✦ SPECIAL INSTRUCTIONS (optional) -->
+                <!-- SPECIAL INSTRUCTIONS (optional) -->
                 <div class="mb-4">
                     <label class="form-label">📝 Special instructions <span class="text-muted fw-normal">(optional)</span></label>
                     <textarea class="form-control" id="instructions" rows="2" placeholder="e.g. gate code, call before arrival, leave with security ..."></textarea>
                     <div class="form-text">Anything extra for the rider or our team.</div>
                 </div>
 
-                <!-- Buttons – only SUBMIT & DOWNLOAD (no calculate) -->
+                <!-- Buttons -->
                 <div class="d-flex flex-wrap gap-3 mt-2">
-                    <button type="button" class="btn btn-mango flex-fill" id="submitBtn" onclick="submitOrder()">
+                    <button type="button" class="btn btn-mango flex-fill" id="submitBtn" onclick="generateInvoice()">
                         <i class="bi bi-check2-circle me-1"></i> Place Order
                     </button>
                     <button type="button" class="btn btn-outline-mango flex-fill" onclick="downloadPDF()">
@@ -231,7 +234,7 @@
                     <span style="font-size: 2.6rem;">🎉</span>
                     <div>
                         <h5 class="mb-0 fw-bold" style="color: #1f6d3a;">Thank you, <span id="thankName"></span>!</h5>
-                        <p class="mb-0" style="color: #2a5e3a;">Your order has been received. We’ll deliver as per your area.<br>
+                        <p class="mb-0" style="color: #2a5e3a;">Your order has been received. We'll deliver as per your area.<br>
                         <span class="small"><i class="bi bi-telephone-fill me-1"></i> For urgent queries: <strong>+971 52 231 7016</strong></span></p>
                     </div>
                 </div>
@@ -241,6 +244,19 @@
             <div id="invoicePreview" class="invoice-preview p-3 mt-4" style="display: none;">
                 <h6 class="border-bottom pb-2 mb-2" style="color: #4d3826;"><i class="bi bi-receipt me-2"></i>Order summary</h6>
                 <div id="invoiceContent"></div>
+            </div>
+
+            <!-- Hidden invoice div for compatibility -->
+            <div id="invoice" style="display: none;">
+                <h2>Mango Vista Invoice</h2>
+                <p><strong>Name:</strong> <span id="invName"></span></p>
+                <p><strong>Phone:</strong> <span id="invPhone"></span></p>
+                <p><strong>Address:</strong> <span id="invAddress"></span></p>
+                <p><strong>Area:</strong> <span id="invArea"></span></p>
+                <p><strong>Boxes:</strong> <span id="invBoxes"></span></p>
+                <p><strong>Total Amount:</strong> <span id="invTotal"></span></p>
+                <p><strong>Expected Delivery:</strong> <span id="invDelivery"></span></p>
+                <div class="thankyou">Thank You for Choosing Mango Vista!</div>
             </div>
 
             <hr class="my-4">
@@ -303,10 +319,8 @@
                 }
             } else {
                 deliveryMsg.style.display = 'none';
-                // if no area, but boxes might be below min – we don't enforce until area selected
             }
 
-            // Recalculate total
             calculateTotal();
         }
 
@@ -315,7 +329,6 @@
             let boxes = getBoxes();
             if (boxes <= 0) { totalDisplay.textContent = '0 AED'; return; }
 
-            // Enforce minimums silently (already enforced in updateUI, but double-check)
             if (area === 'Dubai' && boxes < 2) {
                 boxes = 2;
                 boxesInp.value = 2;
@@ -328,7 +341,7 @@
             return total;
         }
 
-        // Validate required fields (all except instructions)
+        // Validate all required fields (instructions are optional)
         function validateForm() {
             const name = nameInp.value.trim();
             const phone = phoneInp.value.trim();
@@ -346,8 +359,8 @@
             return true;
         }
 
-        // ----- Submit order (Google Sheet + show thanks) -----
-        function submitOrder() {
+        // ----- Generate invoice and submit to Google Sheet -----
+        function generateInvoice() {
             if (!validateForm()) return;
 
             const name = nameInp.value.trim();
@@ -358,7 +371,34 @@
             const total = boxes * PRICE_PER_BOX;
             const instructions = instructionsInp.value.trim() || '(none)';
 
-            // Build payload – matches your Apps Script: name, phone, address, state, boxes, total
+            // Update invoice preview fields
+            document.getElementById("invName").innerText = name;
+            document.getElementById("invPhone").innerText = phone;
+            document.getElementById("invAddress").innerText = address;
+            document.getElementById("invArea").innerText = area;
+            document.getElementById("invBoxes").innerText = boxes;
+            document.getElementById("invTotal").innerText = total + " AED";
+
+            if (area === "Dubai") {
+                document.getElementById("invDelivery").innerText = "Orders within Dubai will be delivered within 1 day.";
+            } else {
+                document.getElementById("invDelivery").innerText = "Orders outside Dubai will be delivered only on weekends.";
+            }
+
+            // Show thank you message
+            if (thankYouDiv && thankNameSpan) {
+                thankNameSpan.innerText = name;
+                thankYouDiv.style.display = "block";
+                thankYouDiv.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+
+            // Show invoice preview
+            showInvoicePreview(name, phone, address, area, boxes, total, instructions);
+
+            // --- Submit to Google Sheet ---
+            // UPDATED: Your actual deployment URL
+            const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxAhe_TSf5FL5-I3Dzvdb4K4td-LMEVdLJfmWMkY0XU5ELjcMl6oEEpQUXMzC5uWMPM/exec';
+
             const payload = {
                 name: name,
                 phone: phone,
@@ -370,39 +410,33 @@
                 timestamp: new Date().toISOString()
             };
 
-            // ★★★ REPLACE WITH YOUR ACTUAL GOOGLE SCRIPT WEB APP URL ★★★
-            const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx_your_script_id_here/exec';
-
-            // Loading state
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span> Submitting...';
+            // Show loading state on submit button
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span> Submitting...';
+            }
 
             fetch(SCRIPT_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                headers: { 'Content-Type': 'application/json' },
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             })
             .then(() => {
-                // Show thank you & invoice preview
-                showThankYou(name);
-                showInvoicePreview(name, phone, address, area, boxes, total, instructions);
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Place Order';
-                // Optionally reset? we keep data visible
+                console.log("Order submitted successfully.");
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Place Order';
+                }
             })
-            .catch(err => {
-                alert('⚠️ There was a problem submitting. Please try again or contact us.');
-                console.error('Submit error:', err);
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Place Order';
+            .catch((err) => {
+                alert("⚠️ There was a problem submitting your order. Please try again or contact us.");
+                console.error("Submit error:", err);
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Place Order';
+                }
             });
-        }
-
-        function showThankYou(name) {
-            thankNameSpan.textContent = name;
-            thankYouDiv.style.display = 'block';
-            thankYouDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
         function showInvoicePreview(name, phone, address, area, boxes, total, instructions) {
@@ -421,23 +455,29 @@
             invoicePreview.style.display = 'block';
         }
 
-        // ----- Download PDF (jsPDF) -----
+        // ----- Download PDF invoice (using jsPDF) -----
         function downloadPDF() {
-            const name = nameInp.value.trim() || 'Customer';
-            const phone = phoneInp.value.trim() || '-';
-            const address = addressInp.value.trim() || '-';
-            const area = getArea() || '-';
+            const name = nameInp.value.trim() || "Customer";
+            const phone = phoneInp.value.trim() || "-";
+            const address = addressInp.value.trim() || "-";
+            const area = getArea() || "-";
             const boxes = getBoxes() || 0;
             const total = boxes * PRICE_PER_BOX;
-            const instructions = instructionsInp.value.trim() || '(none)';
+            const instructions = instructionsInp.value.trim() || "(none)";
 
-            if (boxes < 1) { alert('Please add at least 1 box before downloading bill.'); return; }
-            if (!getArea()) { alert('Please select your area first.'); return; }
+            if (boxes < 1) {
+                alert("Please add at least 1 box before downloading the bill.");
+                return;
+            }
+            if (!getArea()) {
+                alert("Please select your area first.");
+                return;
+            }
 
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             doc.setFontSize(20);
-            doc.text('🥭 Mango Vista · Invoice', 20, 30);
+            doc.text("🥭 Mango Vista · Invoice", 20, 30);
             doc.setFontSize(12);
             doc.text(`Name: ${name}`, 20, 50);
             doc.text(`Phone: ${phone}`, 20, 60);
@@ -446,11 +486,12 @@
             doc.text(`Boxes: ${boxes} (${PRICE_PER_BOX} AED/box)`, 20, 90);
             doc.text(`Total: ${total} AED`, 20, 100);
             doc.text(`Instructions: ${instructions}`, 20, 110);
-            doc.text('Thank you for choosing Mango Vista!', 20, 140);
-            doc.save('MangoVista_Order.pdf');
+            doc.text("Thank you for choosing Mango Vista!", 20, 140);
+            doc.text("📞 +971 52 231 7016", 20, 155);
+            doc.save("MangoVista_Order.pdf");
         }
 
-        // ----- attach events (no calculate button, auto-update) -----
+        // ----- Event listeners -----
         areaSel.addEventListener('change', updateUI);
         boxesInp.addEventListener('input', function() {
             const area = getArea();
@@ -465,14 +506,12 @@
             calculateTotal();
         });
 
-        // Also recalc when area changes (already in updateUI)
         window.addEventListener('DOMContentLoaded', function() {
-            // set default date? not needed, we removed date
-            updateUI(); // initial state
+            updateUI();
         });
 
-        // Expose functions for inline onclick
-        window.submitOrder = submitOrder;
+        // Expose functions globally
+        window.generateInvoice = generateInvoice;
         window.downloadPDF = downloadPDF;
         window.calculateTotal = calculateTotal;
         window.updateUI = updateUI;
