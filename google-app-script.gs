@@ -7,6 +7,9 @@
 
 const SHEET_ID = '31_z1eRE3Fk_PaDj0oLFHnfvQeqGuyzbBhSoED-3MNc';
 
+// ============================================================
+// MAIN POST HANDLER
+// ============================================================
 function doPost(e) {
   try {
     console.log('📥 doPost() called');
@@ -25,6 +28,14 @@ function doPost(e) {
       console.log('📋 Parameter data:', JSON.stringify(data));
     } else {
       throw new Error('No data received');
+    }
+
+    // Validate required fields
+    const required = ['name', 'phone', 'address', 'state', 'fruit', 'boxes', 'total'];
+    for (const field of required) {
+      if (!data[field] && data[field] !== 0) {
+        throw new Error('Missing required field: ' + field);
+      }
     }
 
     // Get the spreadsheet
@@ -100,7 +111,7 @@ function doPost(e) {
 }
 
 // ============================================================
-// GET FRUITS CONFIGURATION FROM SHEET
+// GET FRUITS CONFIGURATION
 // ============================================================
 function getFruitsConfig() {
   try {
