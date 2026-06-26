@@ -566,7 +566,7 @@ function startAutoRefresh() {
         clearInterval(refreshTimer);
     }
     refreshTimer = setInterval(function() {
-        console.log('🔄 Auto-refreshing fruits (5s interval)...');
+        console.log('🔄 Auto-refreshing fruits (1m interval)...');
         loadFruits();
     }, REFRESH_INTERVAL);
 }
