@@ -9,12 +9,12 @@
 // ============================================================
 // CONFIGURATION
 // ============================================================
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyjYvFU3LH1LRk4aDc7P5DMh-KM3GFiK8rNiJc-T9hzNjA_9G1NaP2NH34uuv1SKIaj/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx2ipkS3pI512EC3Q2AmUHciZENMFF0Xa3R5MWpP64dvk2pKeqUuZ1HWel7WKoM_WcX/exec';
 const ORDER_COOLDOWN = 3600000; // 1 hour in milliseconds
+const FRUIT_NAME = 'Mango (Sindhri)';
+const FRUIT_PRICE = 45;
 
-let fruitPrices = {};
 let lastOrderTime = 0;
-let isLoading = false;
 
 // ============================================================
 // DOM REFERENCES
@@ -23,7 +23,7 @@ const nameInp = document.getElementById('name');
 const phoneInp = document.getElementById('phone');
 const addressInp = document.getElementById('address');
 const areaSel = document.getElementById('area');
-const fruitSel = document.getElementById('fruit');
+const fruitDisplay = document.getElementById('fruitDisplay');
 const boxesInp = document.getElementById('boxes');
 const totalDisplay = document.getElementById('totalDisplay');
 const priceDisplay = document.getElementById('priceDisplay');
@@ -37,9 +37,8 @@ const invoiceContent = document.getElementById('invoiceContent');
 const submitBtn = document.getElementById('submitBtn');
 
 function getArea() { return areaSel.value; }
-function getFruit() { return fruitSel.value; }
 function getBoxes() { return parseInt(boxesInp.value) || 0; }
-function getFruitPrice() { return fruitPrices[getFruit()] || 45; }
+function getFruitPrice() { return FRUIT_PRICE; }
 
 // ============================================================
 // SECURE INPUT SANITIZATION
@@ -47,7 +46,7 @@ function getFruitPrice() { return fruitPrices[getFruit()] || 45; }
 function sanitizeInput(input) {
     if (!input) return '';
     return String(input)
-        .replace(/[<>]/g, '') // Remove < and >
+        .replace(/[<>]/g, '')
         .replace(/&/g, '&amp;')
         .replace(/"/g, '&quot;')
         .trim();
@@ -55,122 +54,7 @@ function sanitizeInput(input) {
 
 function sanitizePhone(phone) {
     if (!phone) return '';
-    // Allow only digits, +, spaces, and hyphens
     return String(phone).replace(/[^0-9+\s-]/g, '').trim();
-}
-
-// ============================================================
-// LOAD FRUITS FROM GOOGLE SHEET WITH CACHE-BUSTING
-// ============================================================
-async function loadFruits() {
-    if (isLoading) {
-        console.log('⏳ Already loading, skipping...');
-        return;
-    }
-    
-    isLoading = true;
-    
-    try {
-        // Add cache-busting timestamp
-        const url = SCRIPT_URL + '?action=getFruits&t=' + Date.now();
-        console.log('🔄 Loading fruits from:', url);
-        
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-                'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache'
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error('Network response was not ok: ' + response.status);
-        }
-        
-        const data = await response.json();
-        console.log('📦 Response data:', data);
-        
-        if (data.success && data.fruits && data.fruits.length > 0) {
-            updateFruitDropdown(data.fruits);
-        } else {
-            console.warn('⚠️ No fruits from sheet, using fallback');
-            setFallbackFruits();
-        }
-    } catch (error) {
-        console.error('❌ Error loading fruits:', error);
-        setFallbackFruits();
-        // Show error to user
-        if (fruitSel.options.length <= 1) {
-            fruitSel.innerHTML = '<option value="">— Error loading fruits —</option>';
-            totalDisplay.textContent = '0 AED';
-        }
-    } finally {
-        isLoading = false;
-    }
-}
-
-function updateFruitDropdown(fruits) {
-    // Clear existing options
-    fruitSel.innerHTML = '<option value="">— Select a fruit —</option>';
-    fruitPrices = {};
-    
-    let hasActiveFruit = false;
-    let activeCount = 0;
-    
-    fruits.forEach(fruit => {
-        // Check if active (case insensitive)
-        const isActive = String(fruit.active).toUpperCase() === 'TRUE' || 
-                         String(fruit.active).toUpperCase() === 'YES' || 
-                         String(fruit.active) === true;
-        
-        if (isActive && fruit.name) {
-            const fruitName = sanitizeInput(fruit.name);
-            const emoji = fruit.emoji || '🥭';
-            const price = Number(fruit.price) || 45;
-            
-            const option = document.createElement('option');
-            option.value = fruitName;
-            option.textContent = emoji + ' ' + fruitName;
-            fruitSel.appendChild(option);
-            fruitPrices[fruitName] = price;
-            hasActiveFruit = true;
-            activeCount++;
-            
-            console.log(`✅ Added: ${fruitName} - ${price} AED`);
-        } else {
-            console.log(`⏸️ Skipped (inactive): ${fruit.name}`);
-        }
-    });
-    
-    console.log(`📊 Loaded ${activeCount} active fruits with prices:`, fruitPrices);
-    
-    // Auto-select first fruit if available
-    if (hasActiveFruit && fruitSel.options.length > 1) {
-        fruitSel.value = fruitSel.options[1].value;
-        calculateTotal();
-    } else if (!hasActiveFruit) {
-        // No active fruits - show message
-        fruitSel.innerHTML = '<option value="">— No fruits available —</option>';
-        totalDisplay.textContent = '0 AED';
-        if (priceDisplay) {
-            priceDisplay.textContent = 'No fruits currently available';
-        }
-    }
-}
-
-function setFallbackFruits() {
-    const fallback = [
-        { name: 'Mango (Sindhri)', price: 45 }
-    ];
-    fruitSel.innerHTML = '<option value="">— Select a fruit —</option>';
-    fallback.forEach(f => {
-        const option = document.createElement('option');
-        option.value = f.name;
-        option.textContent = '🥭 ' + f.name;
-        fruitSel.appendChild(option);
-        fruitPrices[f.name] = f.price;
-    });
-    console.log('📋 Fallback fruits loaded:', fruitPrices);
 }
 
 // ============================================================
@@ -179,6 +63,11 @@ function setFallbackFruits() {
 function updateUI() {
     const area = getArea();
     let boxes = getBoxes();
+
+    // Set the fruit display
+    if (fruitDisplay) {
+        fruitDisplay.textContent = '🥭 ' + FRUIT_NAME;
+    }
 
     if (area === 'Dubai') {
         deliveryMsg.style.display = 'block';
@@ -206,18 +95,11 @@ function updateUI() {
 function calculateTotal() {
     const area = getArea();
     let boxes = getBoxes();
-    const price = getFruitPrice();
-    const fruitName = getFruit() || 'No fruit selected';
+    const price = FRUIT_PRICE;
     
     // Update price display
     if (priceDisplay) {
-        if (fruitName && fruitName !== 'No fruit selected' && fruitName !== '— Loading fruits...') {
-            priceDisplay.textContent = 'Price: ' + price + ' AED per box · minimums: Dubai 2, Sharjah 3';
-        } else if (fruitName === '— Loading fruits...') {
-            priceDisplay.textContent = 'Loading fruits...';
-        } else {
-            priceDisplay.textContent = 'Please select a fruit';
-        }
+        priceDisplay.textContent = 'Price: ' + price + ' AED per box · minimums: Dubai 2, Sharjah 3';
     }
     
     if (boxes <= 0) { 
@@ -246,7 +128,6 @@ function validateForm() {
     const phone = sanitizePhone(phoneInp.value);
     const address = sanitizeInput(addressInp.value);
     const area = getArea();
-    const fruit = getFruit();
     const boxes = getBoxes();
 
     if (!name) { alert('Please enter your full name.'); nameInp.focus(); return false; }
@@ -259,10 +140,6 @@ function validateForm() {
     if (address.length < 5) { alert('Please enter a complete address.'); addressInp.focus(); return false; }
     
     if (!area) { alert('Please select your area.'); areaSel.focus(); return false; }
-    if (!fruit) { alert('Please select a fruit.'); fruitSel.focus(); return false; }
-    if (fruit === '— Loading fruits...' || fruit === '— No fruits available —') { 
-        alert('Please wait for fruits to load.'); fruitSel.focus(); return false; 
-    }
     if (boxes < 1) { alert('Please enter number of boxes.'); boxesInp.focus(); return false; }
     if (area === 'Dubai' && boxes < 2) { alert('Dubai minimum is 2 boxes.'); boxesInp.focus(); return false; }
     if (area === 'Sharjah' && boxes < 3) { alert('Sharjah minimum is 3 boxes.'); boxesInp.focus(); return false; }
@@ -291,9 +168,9 @@ function submitOrder() {
     const phone = sanitizePhone(phoneInp.value);
     const address = sanitizeInput(addressInp.value);
     const area = getArea();
-    const fruit = getFruit();
+    const fruit = FRUIT_NAME;
     const boxes = getBoxes();
-    const price = getFruitPrice();
+    const price = FRUIT_PRICE;
     const total = boxes * price;
     const instructions = sanitizeInput(instructionsInp.value) || '(none)';
 
@@ -364,7 +241,7 @@ function submitOrder() {
     })
     .then(() => {
         console.log("✅ Order submitted successfully.");
-        lastOrderTime = Date.now(); // Update cooldown
+        lastOrderTime = Date.now();
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Place Order';
     })
@@ -377,16 +254,16 @@ function submitOrder() {
 }
 
 // ============================================================
-// DOWNLOAD PDF - FINAL VERSION
+// DOWNLOAD PDF
 // ============================================================
 function downloadPDF() {
     const name = sanitizeInput(nameInp.value) || "Not provided";
     const phone = sanitizePhone(phoneInp.value) || "Not provided";
     const address = sanitizeInput(addressInp.value) || "Not provided";
     const area = getArea() || "Not selected";
-    const fruit = getFruit() || "Not selected";
+    const fruit = FRUIT_NAME;
     const boxes = getBoxes() || 0;
-    const price = getFruitPrice();
+    const price = FRUIT_PRICE;
     const total = boxes * price;
     const instructions = sanitizeInput(instructionsInp.value) || "None";
     
@@ -400,10 +277,6 @@ function downloadPDF() {
     }
     if (!getArea()) {
         alert("Please select your area.");
-        return;
-    }
-    if (!getFruit() || getFruit() === '— Loading fruits...') {
-        alert("Please select a fruit.");
         return;
     }
 
@@ -548,10 +421,6 @@ function downloadPDF() {
 // ============================================================
 areaSel.addEventListener('change', updateUI);
 
-fruitSel.addEventListener('change', function() {
-    calculateTotal();
-});
-
 boxesInp.addEventListener('input', function() {
     const area = getArea();
     let val = parseInt(this.value) || 0;
@@ -581,10 +450,9 @@ document.addEventListener('keydown', function(e) {
 window.addEventListener('DOMContentLoaded', function() {
     console.log('✅ DOM loaded, initializing...');
     console.log('📡 SCRIPT_URL:', SCRIPT_URL);
+    console.log('🍎 Fruit:', FRUIT_NAME, '-', FRUIT_PRICE, 'AED');
     console.log('⏱️ Order cooldown:', ORDER_COOLDOWN / 60000 + ' minutes');
     
-    // Load fruits once on page load
-    loadFruits();
     updateUI();
     
     console.log('✅ Ready!');
@@ -597,5 +465,4 @@ window.submitOrder = submitOrder;
 window.downloadPDF = downloadPDF;
 window.calculateTotal = calculateTotal;
 window.updateUI = updateUI;
-window.loadFruits = loadFruits;
 window.SCRIPT_URL = SCRIPT_URL;
