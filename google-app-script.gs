@@ -3,7 +3,7 @@
  * Supports dynamic fruit configuration from sheet
  */
 
-const SHEET_ID = '1GYDIpYphGIMduA-qtyM-WrotDhyKC69TWgKEYS2ELfI';
+const SHEET_ID = '131_z1eRE3Fk_PaDj0oLFHnfvQeqGuyzbBhSoED-3MNc';
 
 function doPost(e) {
   try {
