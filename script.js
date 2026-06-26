@@ -5,7 +5,7 @@
 // ============================================================
 // CONFIGURATION
 // ============================================================
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx2ipkS3pI512EC3Q2AmUHciZENMFF0Xa3R5MWpP64dvk2pKeqUuZ1HWel7WKoM_WcX/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxYH5aRsioVS53pgOPxF5FihHwQNd1M7jGmE3rdHueumkhB1BqTvF4fAUbvCi5166CM/exec';
 const ORDER_COOLDOWN = 3600000; // 1 hour
 const REFRESH_INTERVAL = 60000; // 1 minute
 
