@@ -10,12 +10,9 @@
 // CONFIGURATION
 // ============================================================
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx2ipkS3pI512EC3Q2AmUHciZENMFF0Xa3R5MWpP64dvk2pKeqUuZ1HWel7WKoM_WcX/exec';
-const ORDER_COOLDOWN = 3600000; // 1 hour in milliseconds
 const FRUIT_NAME = 'Mango (Sindhri)';
 const FRUIT_PRICE = 45;
 const MAX_BOXES = 5; // Maximum order limit
-
-let lastOrderTime = 0;
 
 // ============================================================
 // DOM REFERENCES
@@ -158,18 +155,10 @@ function validateForm() {
 }
 
 // ============================================================
-// SUBMIT ORDER WITH COOLDOWN
+// SUBMIT ORDER - NO COOLDOWN
 // ============================================================
 function submitOrder() {
     console.log('📤 submitOrder() called');
-    
-    // Check cooldown
-    const now = Date.now();
-    if (now - lastOrderTime < ORDER_COOLDOWN) {
-        const remaining = Math.ceil((ORDER_COOLDOWN - (now - lastOrderTime)) / 60000);
-        alert('⚠️ You can only place one order per hour. Please wait ' + remaining + ' minute(s).');
-        return;
-    }
     
     if (!validateForm()) return;
 
@@ -251,7 +240,6 @@ function submitOrder() {
     })
     .then(() => {
         console.log("✅ Order submitted successfully.");
-        lastOrderTime = Date.now();
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Place Order';
     })
@@ -475,10 +463,6 @@ window.addEventListener('DOMContentLoaded', function() {
     console.log('📡 SCRIPT_URL:', SCRIPT_URL);
     console.log('🍎 Fruit:', FRUIT_NAME, '-', FRUIT_PRICE, 'AED');
     console.log('📦 Max boxes:', MAX_BOXES);
-    console.log('⏱️ Order cooldown:', ORDER_COOLDOWN / 60000 + ' minutes');
-    
-    updateUI();
-    
     console.log('✅ Ready!');
 });
 
