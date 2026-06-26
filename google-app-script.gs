@@ -3,8 +3,8 @@
  * This script receives orders from the web form and saves them to Google Sheets
  */
 
-// Configuration - CHANGE THIS TO YOUR SHEET ID
-const SHEET_ID = 'https://docs.google.com/spreadsheets/d/1GYDIpYphGIMduA-qtyM-WrotDhyKC69TWgKEYS2ELfI/edit?gid=0#gid=0'; // Replace with your actual Sheet ID
+// Configuration - CORRECT SHEET ID (extracted from your URL)
+const SHEET_ID = '1GYDIpYphGIMduA-qtyM-WrotDhyKC69TWgKEYS2ELfI';
 
 function doPost(e) {
   try {
@@ -13,22 +13,13 @@ function doPost(e) {
     if (e.postData && e.postData.contents) {
       data = JSON.parse(e.postData.contents);
     } else if (e.parameter) {
-      // Fallback for form-encoded data
       data = e.parameter;
     } else {
       throw new Error('No data received');
     }
 
-    // Get or create the spreadsheet
-    let ss;
-    if (SHEET_ID && SHEET_ID !== 'https://docs.google.com/spreadsheets/d/1GYDIpYphGIMduA-qtyM-WrotDhyKC69TWgKEYS2ELfI/edit?gid=0#gid=0') {
-      ss = SpreadsheetApp.openById(SHEET_ID);
-    } else {
-      // If no sheet ID provided, create a new spreadsheet
-      ss = SpreadsheetApp.create('Mango Vista Orders');
-      const url = ss.getUrl();
-      Logger.log(`New spreadsheet created: ${url}`);
-    }
+    // Get the spreadsheet using the correct ID
+    let ss = SpreadsheetApp.openById(SHEET_ID);
 
     // Get or create the Orders sheet
     let sheet = ss.getSheetByName('Orders');
@@ -116,27 +107,11 @@ function testDoPost() {
   Logger.log(`Test result: ${result.getContent()}`);
 }
 
-// Function to get the spreadsheet URL
-function getSpreadsheetUrl() {
-  let ss;
-  if (SHEET_ID && SHEET_ID !== 'https://docs.google.com/spreadsheets/d/1GYDIpYphGIMduA-qtyM-WrotDhyKC69TWgKEYS2ELfI/edit?gid=0#gid=0') {
-    ss = SpreadsheetApp.openById(SHEET_ID);
-  } else {
-    ss = SpreadsheetApp.create('Mango Vista Orders');
-  }
-  return ss.getUrl();
-}
-
 // Function to set up the sheet with headers (run this once)
 function setupSheet() {
-  let ss;
-  if (SHEET_ID && SHEET_ID !== 'https://docs.google.com/spreadsheets/d/1GYDIpYphGIMduA-qtyM-WrotDhyKC69TWgKEYS2ELfI/edit?gid=0#gid=0') {
-    ss = SpreadsheetApp.openById(SHEET_ID);
-  } else {
-    ss = SpreadsheetApp.create('Mango Vista Orders');
-  }
-
+  let ss = SpreadsheetApp.openById(SHEET_ID);
   let sheet = ss.getSheetByName('Orders');
+  
   if (!sheet) {
     sheet = ss.insertSheet('Orders');
   }
