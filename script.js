@@ -5,7 +5,7 @@
 // ============================================================
 // CONFIGURATION
 // ============================================================
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxYH5aRsioVS53pgOPxF5FihHwQNd1M7jGmE3rdHueumkhB1BqTvF4fAUbvCi5166CM/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzQZ_uRaxBJGf-hEp_iXmgLXHJ_1T_fuvGqgPpHS7aLhEVM91Mr8m54Q_Z2CCTfmVAv/exec';
 const ORDER_COOLDOWN = 3600000; // 1 hour
 const REFRESH_INTERVAL = 60000; // 1 minute
 
@@ -13,7 +13,7 @@ let fruitPrices = {};
 let lastOrderTime = 0;
 let refreshTimer = null;
 let isLoading = false;
-let currentFruitHash = '';
+let lastFruitHash = '';
 
 // ============================================================
 // DOM REFERENCES
@@ -48,25 +48,20 @@ function sanitizeInput(input) {
     return String(input).replace(/[<>]/g, '').trim();
 }
 
-function sanitizePhone(phone) {
-    if (!phone) return '';
-    return String(phone).replace(/[^0-9+\s-]/g, '').trim();
-}
-
 // ============================================================
-// GENERATE HASH FOR COMPARISON
+// HASH FUNCTION - Detects if data changed
 // ============================================================
 function generateHash(fruits) {
     let hash = '';
-    fruits.sort((a, b) => a.name.localeCompare(b.name));
-    fruits.forEach(f => {
+    const sorted = [...fruits].sort((a, b) => a.name.localeCompare(b.name));
+    sorted.forEach(f => {
         hash += f.name + '|' + f.active + '|' + f.price + '|';
     });
     return hash;
 }
 
 // ============================================================
-// FETCH FRUITS USING POST (NO CACHING)
+// FETCH FRUITS - ALWAYS FRESH (uses POST to avoid caching)
 // ============================================================
 async function loadFruits() {
     if (isLoading) {
@@ -78,6 +73,12 @@ async function loadFruits() {
     fruitSel.innerHTML = '<option value="">⏳ Loading...</option>';
     
     try {
+        const payload = {
+            action: 'getFruits',
+            timestamp: Date.now(),
+            random: Math.random().toString(36).substring(7)
+        };
+        
         console.log('🔄 Fetching fruits via POST...');
         
         const response = await fetch(SCRIPT_URL, {
@@ -85,12 +86,9 @@ async function loadFruits() {
             mode: 'cors',
             headers: {
                 'Content-Type': 'application/json',
-                'Cache-Control': 'no-cache'
+                'Cache-Control': 'no-cache, no-store'
             },
-            body: JSON.stringify({
-                action: 'getFruits',
-                timestamp: Date.now()
-            })
+            body: JSON.stringify(payload)
         });
         
         if (!response.ok) {
@@ -103,11 +101,12 @@ async function loadFruits() {
         if (data.success && data.fruits) {
             const newHash = generateHash(data.fruits);
             
-            if (newHash !== currentFruitHash) {
-                console.log('🔄 Data changed, updating...');
+            // 🔥 Only update if data actually changed
+            if (newHash !== lastFruitHash) {
+                console.log('🔄 Data changed, updating dropdown...');
                 updateFruitDropdown(data.fruits);
-                currentFruitHash = newHash;
-                showToast('Fruits updated successfully! ✅');
+                lastFruitHash = newHash;
+                showToast('✅ Fruits updated!');
             } else {
                 console.log('✅ No changes detected');
                 // Still ensure dropdown has data
@@ -133,7 +132,11 @@ function updateFruitDropdown(fruits) {
     let count = 0;
     
     fruits.forEach(fruit => {
-        const isActive = String(fruit.active).toUpperCase() === 'TRUE';
+        // 🔥 Check if active (TRUE/YES/1)
+        const isActive = String(fruit.active).toUpperCase() === 'TRUE' || 
+                         String(fruit.active).toUpperCase() === 'YES' || 
+                         String(fruit.active) === true;
+        
         if (isActive && fruit.name) {
             const name = sanitizeInput(fruit.name);
             const price = Number(fruit.price) || 45;
@@ -206,9 +209,9 @@ function showToast(message) {
 // ============================================================
 function refreshFruits() {
     console.log('🔄 Manual refresh');
-    currentFruitHash = ''; // Force update
+    lastFruitHash = ''; // Force update
     loadFruits();
-    showToast('Refreshing... 🔄');
+    showToast('🔄 Refreshing...');
 }
 
 // ============================================================
@@ -245,10 +248,9 @@ function calculateTotal() {
     const area = getArea();
     let boxes = getBoxes();
     const price = getFruitPrice();
-    const fruitName = getFruit() || 'No fruit selected';
     
     if (priceDisplay) {
-        if (fruitName && fruitName !== 'No fruit selected' && fruitName !== '⏳ Loading...') {
+        if (getFruit() && getFruit() !== '⏳ Loading...') {
             priceDisplay.textContent = 'Price: ' + price + ' AED per box · minimums: Dubai 2, Sharjah 3';
         } else {
             priceDisplay.textContent = 'Please select a fruit';
@@ -278,7 +280,7 @@ function calculateTotal() {
 // ============================================================
 function validateForm() {
     const name = sanitizeInput(nameInp.value);
-    const phone = sanitizePhone(phoneInp.value);
+    const phone = sanitizeInput(phoneInp.value);
     const address = sanitizeInput(addressInp.value);
     const area = getArea();
     const fruit = getFruit();
@@ -287,9 +289,7 @@ function validateForm() {
     if (!name) { alert('Please enter your full name.'); nameInp.focus(); return false; }
     if (name.length < 2) { alert('Name must be at least 2 characters.'); nameInp.focus(); return false; }
     if (!phone) { alert('Phone number is required.'); phoneInp.focus(); return false; }
-    if (phone.length < 8) { alert('Please enter a valid phone number.'); phoneInp.focus(); return false; }
     if (!address) { alert('Address is required.'); addressInp.focus(); return false; }
-    if (address.length < 5) { alert('Please enter a complete address.'); addressInp.focus(); return false; }
     if (!area) { alert('Please select your area.'); areaSel.focus(); return false; }
     if (!fruit || fruit === '⏳ Loading...' || fruit === '— No fruits available —') { 
         alert('Please select a fruit.'); fruitSel.focus(); return false; 
@@ -316,7 +316,7 @@ function submitOrder() {
     if (!validateForm()) return;
 
     const name = sanitizeInput(nameInp.value);
-    const phone = sanitizePhone(phoneInp.value);
+    const phone = sanitizeInput(phoneInp.value);
     const address = sanitizeInput(addressInp.value);
     const area = getArea();
     const fruit = getFruit();
@@ -368,8 +368,7 @@ function submitOrder() {
         pricePerBox: price,
         boxes: boxes,
         total: total,
-        instructions: instructions,
-        timestamp: new Date().toISOString()
+        instructions: instructions
     };
 
     submitBtn.disabled = true;
@@ -405,7 +404,7 @@ function submitOrder() {
 // ============================================================
 function downloadPDF() {
     const name = sanitizeInput(nameInp.value) || "Not provided";
-    const phone = sanitizePhone(phoneInp.value) || "Not provided";
+    const phone = sanitizeInput(phoneInp.value) || "Not provided";
     const address = sanitizeInput(addressInp.value) || "Not provided";
     const area = getArea() || "Not selected";
     const fruit = getFruit() || "Not selected";
@@ -601,7 +600,6 @@ document.addEventListener('keydown', function(e) {
 // ============================================================
 window.addEventListener('DOMContentLoaded', function() {
     console.log('✅ Initializing...');
-    console.log('📡 URL:', SCRIPT_URL);
     loadFruits();
     updateUI();
     startAutoRefresh();
@@ -616,4 +614,3 @@ window.calculateTotal = calculateTotal;
 window.updateUI = updateUI;
 window.loadFruits = loadFruits;
 window.refreshFruits = refreshFruits;
-window.SCRIPT_URL = SCRIPT_URL;
