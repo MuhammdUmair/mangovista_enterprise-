@@ -17,6 +17,7 @@ let fruitPrices = {};
 let lastOrderTime = 0;
 let refreshTimer = null;
 let isLoading = false;
+let lastFruitDataHash = ''; // Track data changes
 
 // ============================================================
 // DOM REFERENCES
@@ -57,7 +58,18 @@ function sanitizePhone(phone) {
 }
 
 // ============================================================
-// LOAD FRUITS FROM GOOGLE SHEET
+// GENERATE HASH FOR DATA COMPARISON
+// ============================================================
+function generateFruitHash(fruits) {
+    let hash = '';
+    fruits.forEach(f => {
+        hash += f.name + '|' + f.active + '|' + f.price + '|';
+    });
+    return hash;
+}
+
+// ============================================================
+// LOAD FRUITS FROM GOOGLE SHEET - FORCE FRESH
 // ============================================================
 async function loadFruits() {
     if (isLoading) {
@@ -71,19 +83,21 @@ async function loadFruits() {
     fruitSel.innerHTML = '<option value="">⏳ Loading fruits...</option>';
     
     try {
-        // Build URL with cache-busting
+        // 🔥 KEY FIX: Multiple cache-busting parameters
         const timestamp = Date.now();
-        const url = SCRIPT_URL + '?action=getFruits&t=' + timestamp;
+        const random = Math.random().toString(36).substring(7);
+        const url = SCRIPT_URL + '?action=getFruits&t=' + timestamp + '&r=' + random;
         
         console.log('🔄 Loading fruits from:', url);
         
         const response = await fetch(url, {
             method: 'GET',
-            mode: 'cors', // Explicitly set CORS mode
+            mode: 'cors',
             headers: {
                 'Content-Type': 'application/json',
-                'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache'
+                'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+                'Pragma': 'no-cache',
+                'Expires': '0'
             }
         });
         
@@ -93,9 +107,24 @@ async function loadFruits() {
         
         const data = await response.json();
         console.log('📦 Response data:', data);
+        console.log('📦 Response timestamp:', data._timestamp);
         
         if (data.success && data.fruits && data.fruits.length > 0) {
-            updateFruitDropdown(data.fruits);
+            // 🔥 KEY FIX: Check if data actually changed
+            const newHash = generateFruitHash(data.fruits);
+            if (newHash !== lastFruitDataHash) {
+                console.log('🔄 Fruit data changed! Updating dropdown...');
+                updateFruitDropdown(data.fruits);
+                lastFruitDataHash = newHash;
+                // Show notification to user
+                showNotification('Fruits updated successfully!');
+            } else {
+                console.log('✅ No changes detected in fruit data');
+                // Still update in case the dropdown is empty
+                if (fruitSel.options.length <= 1) {
+                    updateFruitDropdown(data.fruits);
+                }
+            }
         } else if (data.success && data.fruits && data.fruits.length === 0) {
             fruitSel.innerHTML = '<option value="">— No fruits available —</option>';
             totalDisplay.textContent = '0 AED';
@@ -179,11 +208,47 @@ function setFallbackFruits() {
 }
 
 // ============================================================
-// REFRESH FRUITS MANUALLY
+// SHOW NOTIFICATION TO USER
+// ============================================================
+function showNotification(message) {
+    // Simple toast notification
+    const existing = document.querySelector('.fruit-toast');
+    if (existing) existing.remove();
+    
+    const toast = document.createElement('div');
+    toast.className = 'fruit-toast';
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #2e7d32;
+        color: white;
+        padding: 10px 24px;
+        border-radius: 30px;
+        font-size: 14px;
+        z-index: 9999;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        transition: opacity 0.3s;
+        opacity: 1;
+    `;
+    toast.textContent = '✓ ' + message;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// ============================================================
+// REFRESH FRUITS MANUALLY - FORCE FRESH
 // ============================================================
 function refreshFruits() {
-    console.log('🔄 Manual refresh triggered');
+    console.log('🔄 Manual refresh triggered - forcing fresh data');
+    lastFruitDataHash = ''; // Clear hash to force update
     loadFruits();
+    showNotification('Refreshing fruits...');
 }
 
 // ============================================================
@@ -367,7 +432,8 @@ function submitOrder() {
         lastOrderTime = Date.now();
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Place Order';
-        setTimeout(loadFruits, 2000);
+        // 🔥 Force refresh after order
+        setTimeout(refreshFruits, 1000);
     })
     .catch((err) => {
         console.error("❌ Submit error:", err);
