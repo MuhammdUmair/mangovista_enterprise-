@@ -7,7 +7,7 @@
  * Sheet ID: 131_z1eRE3Fk_PaDj0oLFHnfvQeqGuyzbBhSoED-3MNc
  */
 
-// CONFIGURATION - UPDATED WITH YOUR NEW SHEET ID
+// CONFIGURATION
 const SHEET_ID = '131_z1eRE3Fk_PaDj0oLFHnfvQeqGuyzbBhSoED-3MNc';
 
 function doPost(e) {
@@ -22,16 +22,22 @@ function doPost(e) {
     let data;
     if (e.postData && e.postData.contents) {
       data = JSON.parse(e.postData.contents);
+      console.log('📋 Parsed JSON data:', JSON.stringify(data));
     } else if (e.parameter) {
       data = e.parameter;
+      console.log('📋 Parameter data:', JSON.stringify(data));
     } else {
       throw new Error('No data received');
     }
 
+    // Get the spreadsheet
     let ss = SpreadsheetApp.openById(SHEET_ID);
+    console.log('📊 Spreadsheet opened successfully');
+
+    // Get or create the Orders sheet
     let sheet = ss.getSheetByName('Orders');
-    
     if (!sheet) {
+      console.log('📝 Orders sheet not found, creating new one...');
       sheet = ss.insertSheet('Orders');
       const headers = [
         'Timestamp',
@@ -40,6 +46,7 @@ function doPost(e) {
         'Address',
         'Area',
         'Fruit Type',
+        'Price Per Box (AED)',
         'Number of Boxes',
         'Total Amount (AED)',
         'Special Instructions',
@@ -47,8 +54,10 @@ function doPost(e) {
       ];
       sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
       sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+      console.log('✅ Headers created');
     }
 
+    // Prepare row data
     const timestamp = new Date();
     const orderStatus = 'Pending';
 
@@ -59,15 +68,20 @@ function doPost(e) {
       data.address || '',
       data.state || data.area || '',
       data.fruit || 'Mango',
+      data.pricePerBox || 45,
       data.boxes || 0,
       data.total || 0,
       data.instructions || '(none)',
       orderStatus
     ];
 
-    sheet.appendRow(row);
-    console.log('✅ Row appended');
+    console.log('📝 Appending row:', JSON.stringify(row));
 
+    // Append row to sheet
+    sheet.appendRow(row);
+    console.log('✅ Row appended, new row number:', sheet.getLastRow());
+
+    // Return success response
     return ContentService
       .createTextOutput(JSON.stringify({
         success: true,
@@ -194,6 +208,7 @@ function setupOrdersSheet() {
     'Address',
     'Area',
     'Fruit Type',
+    'Price Per Box (AED)',
     'Number of Boxes',
     'Total Amount (AED)',
     'Special Instructions',
@@ -257,16 +272,17 @@ function setupAll() {
   Logger.log('🎉 All setup complete!');
 }
 
-// Test function
+// Test function to verify backend connection
 function testDoPost() {
   const testData = {
     name: 'Test Customer',
     phone: '+971 50 123 4567',
     address: 'Test Address, Dubai',
     state: 'Dubai',
-    fruit: 'Mango',
-    boxes: 2,
-    total: 90,
+    fruit: 'Orange',
+    pricePerBox: 38,
+    boxes: 3,
+    total: 114,
     instructions: 'Test instruction - leave with security',
     timestamp: new Date().toISOString()
   };
