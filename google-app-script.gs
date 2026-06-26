@@ -1,8 +1,13 @@
 /**
  * Google Apps Script - Being Healthy Order Handler
- * Supports dynamic fruit configuration from sheet
+ * 
+ * DEPLOYMENT INFO:
+ * Web App URL: https://script.google.com/macros/s/AKfycbyRRZr640zMiP0tdDbwPS8mHEG5GRBKlYs69YvhMoFh6byhcMRUED9TwFzjtyYSp9IP/exec
+ * Deployment ID: AKfycbyRRZr640zMiP0tdDbwPS8mHEG5GRBKlYs69YvhMoFh6byhcMRUED9TwFzjtyYSp9IP
+ * Sheet ID: 131_z1eRE3Fk_PaDj0oLFHnfvQeqGuyzbBhSoED-3MNc
  */
 
+// CONFIGURATION - UPDATED WITH YOUR NEW SHEET ID
 const SHEET_ID = '131_z1eRE3Fk_PaDj0oLFHnfvQeqGuyzbBhSoED-3MNc';
 
 function doPost(e) {
@@ -168,7 +173,7 @@ function getFruitsConfig() {
 }
 
 // ============================================================
-// SETUP FUNCTIONS - Run these once
+// SETUP FUNCTIONS - Run these once in Apps Script
 // ============================================================
 
 // Run this to set up the Orders sheet
@@ -237,7 +242,6 @@ function setupFruitConfigSheet() {
     configSheet.getRange(2, 1, defaultFruits.length, 4).setValues(defaultFruits);
   }
   
-  // Auto-resize columns
   configSheet.autoResizeColumns(1, 4);
   
   Logger.log('✅ Fruit Config sheet setup complete!');
@@ -245,8 +249,9 @@ function setupFruitConfigSheet() {
   return ss.getUrl();
 }
 
-// Run this to set up everything
+// Run this to set up everything at once
 function setupAll() {
+  Logger.log('🚀 Starting full setup...');
   setupOrdersSheet();
   setupFruitConfigSheet();
   Logger.log('🎉 All setup complete!');
