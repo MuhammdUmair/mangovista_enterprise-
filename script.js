@@ -9,7 +9,7 @@
 // ============================================================
 // CONFIGURATION
 // ============================================================
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx2ipkS3pI512EC3Q2AmUHciZENMFF0Xa3R5MWpP64dvk2pKeqUuZ1HWel7WKoM_WcX/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyQJAnKDMncZWSishegJP2ojoUDruo8ojrkn5xAcdpIDsJ5Sz8uhCPo1MRY4jWkBL4/exec';
 const ORDER_COOLDOWN = 3600000; // 1 hour in milliseconds
 const FRUIT_NAME = 'Mango (Sindhri)';
 const FRUIT_PRICE = 45;
