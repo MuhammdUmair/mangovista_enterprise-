@@ -83,23 +83,6 @@
             color: #fff;
             transform: translateY(-2px);
         }
-        .btn-refresh {
-            border: 2px solid #2e7d32;
-            color: #2e7d32;
-            background: transparent;
-            padding: 4px 14px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            transition: all 0.2s;
-        }
-        .btn-refresh:hover {
-            background: #2e7d32;
-            color: #fff;
-        }
-        .btn-refresh:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
         .delivery-badge {
             background: #eaf7e1;
             color: #2a6b3a;
@@ -244,17 +227,11 @@
                 <div class="mb-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <label class="form-label">Select Fruit <span class="required-star">*</span></label>
-                        <div>
-                            <span id="refreshStatus" class="text-muted small me-2">Auto-refresh: 1m</span>
-                            <button type="button" class="btn-refresh" onclick="refreshFruits()" id="refreshBtn">
-                                <i class="bi bi-arrow-clockwise me-1"></i> Refresh
-                            </button>
-                        </div>
                     </div>
                     <select class="form-select" id="fruit" required>
                         <option value="">— Loading fruits... —</option>
                     </select>
-                    <div class="form-text">Auto-refreshes every 1 minute</div>
+                    <div class="form-text">Fruits loaded from Google Sheet</div>
                 </div>
 
                 <!-- Boxes + price -->
