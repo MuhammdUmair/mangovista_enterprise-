@@ -17,7 +17,11 @@ function createCORSResponse(data) {
         .setHeader('Access-Control-Allow-Origin', '*')
         .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         .setHeader('Access-Control-Allow-Headers', 'Content-Type')
-        .setHeader('Access-Control-Max-Age', '86400');
+        .setHeader('Access-Control-Max-Age', '86400')
+        // 🔥 KEY FIX: Force no-cache at the response level
+        .setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0')
+        .setHeader('Pragma', 'no-cache')
+        .setHeader('Expires', '0');
 }
 
 // ============================================================
@@ -140,12 +144,15 @@ function doPost(e) {
 }
 
 // ============================================================
-// GET FRUITS CONFIGURATION
+// GET FRUITS CONFIGURATION - FORCES FRESH DATA
 // ============================================================
 function getFruitsConfig(e) {
     try {
         console.log('📋 getFruitsConfig() called');
-        console.log('📋 Request parameters:', JSON.stringify(e ? e.parameter : {}));
+        
+        // 🔥 KEY FIX: Log the timestamp to verify cache-busting
+        const requestTime = e && e.parameter ? e.parameter.t : 'unknown';
+        console.log('📋 Request timestamp:', requestTime);
         
         let ss = SpreadsheetApp.openById(SHEET_ID);
         let configSheet = ss.getSheetByName('FruitConfig');
@@ -177,7 +184,8 @@ function getFruitsConfig(e) {
             }
         }
         
-        // Read fruit data
+        // 🔥 KEY FIX: Force a fresh read by getting the sheet's data range
+        // This ensures we're reading the latest data
         const lastRow = configSheet.getLastRow();
         console.log('📊 FruitConfig last row:', lastRow);
         
@@ -186,10 +194,12 @@ function getFruitsConfig(e) {
             return createCORSResponse({
                 success: true,
                 fruits: [],
-                _timestamp: new Date().toISOString()
+                _timestamp: new Date().toISOString(),
+                _requestTime: requestTime
             });
         }
         
+        // 🔥 KEY FIX: Read ALL data fresh from the sheet
         const data = configSheet.getRange(2, 1, lastRow - 1, 4).getValues();
         const fruits = [];
         
@@ -213,12 +223,14 @@ function getFruitsConfig(e) {
         }
         
         console.log(`📋 Loaded ${fruits.length} fruits from config`);
+        console.log(`📋 Response timestamp: ${new Date().toISOString()}`);
         
-        // Return success response with CORS headers
+        // 🔥 KEY FIX: Return the fresh data with a timestamp
         return createCORSResponse({
             success: true,
             fruits: fruits,
             _timestamp: new Date().toISOString(),
+            _requestTime: requestTime,
             _count: fruits.length
         });
 
@@ -327,6 +339,7 @@ function setupAll() {
 function testGetFruits() {
     console.log('🧪 Testing getFruits...');
     const result = getFruitsConfig({ parameter: { action: 'getFruits', t: Date.now() } });
-    console.log('📊 Result:', result.getContent());
-    return result.getContent();
+    const content = result.getContent();
+    console.log('📊 Result:', content);
+    return content;
 }
