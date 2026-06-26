@@ -9,10 +9,11 @@
 // ============================================================
 // CONFIGURATION
 // ============================================================
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyQJAnKDMncZWSishegJP2ojoUDruo8ojrkn5xAcdpIDsJ5Sz8uhCPo1MRY4jWkBL4/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx2ipkS3pI512EC3Q2AmUHciZENMFF0Xa3R5MWpP64dvk2pKeqUuZ1HWel7WKoM_WcX/exec';
 const ORDER_COOLDOWN = 3600000; // 1 hour in milliseconds
 const FRUIT_NAME = 'Mango (Sindhri)';
 const FRUIT_PRICE = 45;
+const MAX_BOXES = 5; // Maximum order limit
 
 let lastOrderTime = 0;
 
@@ -99,7 +100,7 @@ function calculateTotal() {
     
     // Update price display
     if (priceDisplay) {
-        priceDisplay.textContent = 'Price: ' + price + ' AED per box · minimums: Dubai 2, Sharjah 3';
+        priceDisplay.textContent = 'Price: ' + price + ' AED per box · minimums: Dubai 2, Sharjah 3 · maximum: ' + MAX_BOXES + ' boxes';
     }
     
     if (boxes <= 0) { 
@@ -107,6 +108,14 @@ function calculateTotal() {
         return; 
     }
 
+    // Enforce maximum
+    if (boxes > MAX_BOXES) {
+        boxes = MAX_BOXES;
+        boxesInp.value = MAX_BOXES;
+        alert('Maximum order is ' + MAX_BOXES + ' boxes.');
+    }
+
+    // Enforce minimums
     if (area === 'Dubai' && boxes < 2) {
         boxes = 2;
         boxesInp.value = 2;
@@ -141,6 +150,7 @@ function validateForm() {
     
     if (!area) { alert('Please select your area.'); areaSel.focus(); return false; }
     if (boxes < 1) { alert('Please enter number of boxes.'); boxesInp.focus(); return false; }
+    if (boxes > MAX_BOXES) { alert('Maximum order is ' + MAX_BOXES + ' boxes.'); boxesInp.focus(); return false; }
     if (area === 'Dubai' && boxes < 2) { alert('Dubai minimum is 2 boxes.'); boxesInp.focus(); return false; }
     if (area === 'Sharjah' && boxes < 3) { alert('Sharjah minimum is 3 boxes.'); boxesInp.focus(); return false; }
     
@@ -273,6 +283,10 @@ function downloadPDF() {
 
     if (boxes < 1) {
         alert("Please add at least 1 box.");
+        return;
+    }
+    if (boxes > MAX_BOXES) {
+        alert("Maximum order is " + MAX_BOXES + " boxes.");
         return;
     }
     if (!getArea()) {
@@ -424,6 +438,15 @@ areaSel.addEventListener('change', updateUI);
 boxesInp.addEventListener('input', function() {
     const area = getArea();
     let val = parseInt(this.value) || 0;
+    
+    // Maximum limit check
+    if (val > MAX_BOXES) {
+        this.value = MAX_BOXES;
+        alert('Maximum order is ' + MAX_BOXES + ' boxes.');
+        val = MAX_BOXES;
+    }
+    
+    // Minimum checks
     if (area === 'Dubai' && val < 2 && val > 0) {
         this.value = 2;
         alert('Dubai minimum is 2 boxes.');
@@ -451,6 +474,7 @@ window.addEventListener('DOMContentLoaded', function() {
     console.log('✅ DOM loaded, initializing...');
     console.log('📡 SCRIPT_URL:', SCRIPT_URL);
     console.log('🍎 Fruit:', FRUIT_NAME, '-', FRUIT_PRICE, 'AED');
+    console.log('📦 Max boxes:', MAX_BOXES);
     console.log('⏱️ Order cooldown:', ORDER_COOLDOWN / 60000 + ' minutes');
     
     updateUI();
