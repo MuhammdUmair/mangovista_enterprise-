@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mango Vista · Order</title>
+    <title>Being Healthy · Order Fresh Fruits</title>
     <!-- Bootstrap 5 + custom style -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- jsPDF for PDF bill -->
@@ -26,7 +26,7 @@
             padding-bottom: 0.5rem;
         }
         .card-header h2 {
-            color: #a85c2c;
+            color: #2e7d32;
             font-weight: 700;
             letter-spacing: -0.5px;
         }
@@ -38,8 +38,8 @@
             transition: all 0.2s;
         }
         .form-control:focus, .form-select:focus {
-            border-color: #c3823a;
-            box-shadow: 0 0 0 0.2rem rgba(195, 130, 58, 0.2);
+            border-color: #2e7d32;
+            box-shadow: 0 0 0 0.2rem rgba(46, 125, 50, 0.2);
             background: #fff;
         }
         .form-label {
@@ -48,8 +48,8 @@
             margin-bottom: 4px;
             font-size: 0.95rem;
         }
-        .btn-mango {
-            background: #c3823a;
+        .btn-green {
+            background: #2e7d32;
             border: none;
             color: #fff;
             font-weight: 600;
@@ -58,23 +58,23 @@
             transition: all 0.2s;
             letter-spacing: 0.3px;
         }
-        .btn-mango:hover {
-            background: #a86e2e;
+        .btn-green:hover {
+            background: #1b5e20;
             color: #fff;
             transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(195, 130, 58, 0.3);
+            box-shadow: 0 8px 20px rgba(46, 125, 50, 0.3);
         }
-        .btn-outline-mango {
-            border: 2px solid #c3823a;
-            color: #c3823a;
+        .btn-outline-green {
+            border: 2px solid #2e7d32;
+            color: #2e7d32;
             background: transparent;
             font-weight: 600;
             padding: 12px 28px;
             border-radius: 40px;
             transition: all 0.2s;
         }
-        .btn-outline-mango:hover {
-            background: #c3823a;
+        .btn-outline-green:hover {
+            background: #2e7d32;
             color: #fff;
             transform: translateY(-2px);
         }
@@ -161,14 +161,17 @@
             text-align: center;
             margin-top: 10px;
         }
+        .fruit-emoji {
+            font-size: 1.2rem;
+        }
     </style>
 </head>
 <body>
     <div class="container py-4" style="max-width: 680px;">
         <div class="card shadow-hover p-4 p-md-5">
             <div class="card-header text-center pb-3">
-                <h2 class="mb-0">🥭 Mango Vista</h2>
-                <p class="text-muted mb-0" style="font-size: 0.95rem;">Fresh mangoes · delivered with care</p>
+                <h2 class="mb-0">🌿 Being Healthy</h2>
+                <p class="text-muted mb-0" style="font-size: 0.95rem;">Fresh fruits · delivered with care</p>
             </div>
 
             <!-- ORDER FORM -->
@@ -202,6 +205,15 @@
                     </div>
                 </div>
 
+                <!-- Fruit Selection - Loaded from Google Sheet -->
+                <div class="mb-3">
+                    <label class="form-label">Select Fruit <span class="required-star">*</span></label>
+                    <select class="form-select" id="fruit" required>
+                        <option value="">— Loading fruits... —</option>
+                    </select>
+                    <div class="form-text">Fruits availability is managed from Google Sheet</div>
+                </div>
+
                 <!-- Boxes + price (fixed 45 AED) – auto-update -->
                 <div class="row g-3 mb-3 align-items-end">
                     <div class="col-7">
@@ -224,10 +236,10 @@
 
                 <!-- Buttons -->
                 <div class="d-flex flex-wrap gap-3 mt-2">
-                    <button type="button" class="btn btn-mango flex-fill" id="submitBtn">
+                    <button type="button" class="btn btn-green flex-fill" id="submitBtn">
                         <i class="bi bi-check2-circle me-1"></i> Place Order
                     </button>
-                    <button type="button" class="btn btn-outline-mango flex-fill" onclick="downloadPDF()">
+                    <button type="button" class="btn btn-outline-green flex-fill" onclick="downloadPDF()">
                         <i class="bi bi-download me-1"></i> Bill PDF
                     </button>
                 </div>
@@ -253,15 +265,16 @@
 
             <!-- Hidden invoice div for compatibility -->
             <div id="invoice" style="display: none;">
-                <h2>Mango Vista Invoice</h2>
+                <h2>Being Healthy Invoice</h2>
                 <p><strong>Name:</strong> <span id="invName"></span></p>
                 <p><strong>Phone:</strong> <span id="invPhone"></span></p>
                 <p><strong>Address:</strong> <span id="invAddress"></span></p>
                 <p><strong>Area:</strong> <span id="invArea"></span></p>
+                <p><strong>Fruit:</strong> <span id="invFruit"></span></p>
                 <p><strong>Boxes:</strong> <span id="invBoxes"></span></p>
                 <p><strong>Total Amount:</strong> <span id="invTotal"></span></p>
                 <p><strong>Expected Delivery:</strong> <span id="invDelivery"></span></p>
-                <div class="thankyou">Thank You for Choosing Mango Vista!</div>
+                <div class="thankyou">Thank You for Choosing Being Healthy!</div>
             </div>
 
             <hr class="my-4">
@@ -277,266 +290,6 @@
         <i class="bi bi-whatsapp"></i>
     </a>
 
-    <script>
-        
-        // ============================================================
-        // CONFIGURATION - UPDATED WITH YOUR NEW DEPLOYMENT URL
-        // ============================================================
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxt6JQBzNskvbKtFYSKnpUbzxBmtR1_OhSnSIkgbwAfXYwnlErs5fx9Qa8hL7-j98U82Q/exec';
-        const PRICE_PER_BOX = 45;
-
-        // ============================================================
-        // DOM REFERENCES
-        // ============================================================
-        const nameInp = document.getElementById('name');
-        const phoneInp = document.getElementById('phone');
-        const addressInp = document.getElementById('address');
-        const areaSel = document.getElementById('area');
-        const boxesInp = document.getElementById('boxes');
-        const totalDisplay = document.getElementById('totalDisplay');
-        const deliveryMsg = document.getElementById('deliveryMessage');
-        const deliveryText = document.getElementById('deliveryText');
-        const instructionsInp = document.getElementById('instructions');
-        const thankYouDiv = document.getElementById('thankYouMessage');
-        const thankNameSpan = document.getElementById('thankName');
-        const invoicePreview = document.getElementById('invoicePreview');
-        const invoiceContent = document.getElementById('invoiceContent');
-        const submitBtn = document.getElementById('submitBtn');
-
-        // ============================================================
-        // HELPER FUNCTIONS
-        // ============================================================
-        function getArea() { return areaSel.value; }
-        function getBoxes() { return parseInt(boxesInp.value) || 0; }
-
-        // ============================================================
-        // UPDATE UI - Area & Boxes
-        // ============================================================
-        function updateUI() {
-            const area = getArea();
-            let boxes = getBoxes();
-
-            if (area === 'Dubai') {
-                deliveryMsg.style.display = 'block';
-                deliveryText.textContent = 'Dubai: delivery within 1 day.';
-                if (boxes > 0 && boxes < 2) {
-                    boxes = 2;
-                    boxesInp.value = 2;
-                    alert('Minimum order for Dubai is 2 boxes.');
-                }
-            } else if (area === 'Sharjah') {
-                deliveryMsg.style.display = 'block';
-                deliveryText.textContent = 'Sharjah: orders confirmed on weekends only.';
-                if (boxes > 0 && boxes < 3) {
-                    boxes = 3;
-                    boxesInp.value = 3;
-                    alert('Minimum order for Sharjah is 3 boxes.');
-                }
-            } else {
-                deliveryMsg.style.display = 'none';
-            }
-
-            calculateTotal();
-        }
-
-        function calculateTotal() {
-            const area = getArea();
-            let boxes = getBoxes();
-            if (boxes <= 0) { totalDisplay.textContent = '0 AED'; return; }
-
-            if (area === 'Dubai' && boxes < 2) {
-                boxes = 2;
-                boxesInp.value = 2;
-            } else if (area === 'Sharjah' && boxes < 3) {
-                boxes = 3;
-                boxesInp.value = 3;
-            }
-            const total = boxes * PRICE_PER_BOX;
-            totalDisplay.textContent = total + ' AED';
-            return total;
-        }
-
-        // ============================================================
-        // VALIDATE FORM
-        // ============================================================
-        function validateForm() {
-            const name = nameInp.value.trim();
-            const phone = phoneInp.value.trim();
-            const address = addressInp.value.trim();
-            const area = getArea();
-            const boxes = getBoxes();
-
-            if (!name) { alert('Please enter your full name.'); nameInp.focus(); return false; }
-            if (!phone) { alert('Phone number is required.'); phoneInp.focus(); return false; }
-            if (!address) { alert('Address is required.'); addressInp.focus(); return false; }
-            if (!area) { alert('Please select your area (Dubai / Sharjah).'); areaSel.focus(); return false; }
-            if (boxes < 1) { alert('Please enter the number of boxes (minimum 1).'); boxesInp.focus(); return false; }
-            if (area === 'Dubai' && boxes < 2) { alert('Dubai minimum is 2 boxes.'); boxesInp.focus(); return false; }
-            if (area === 'Sharjah' && boxes < 3) { alert('Sharjah minimum is 3 boxes.'); boxesInp.focus(); return false; }
-            return true;
-        }
-
-        // ============================================================
-        // SUBMIT ORDER TO GOOGLE SHEET
-        // ============================================================
-        function submitOrder() {
-            console.log('submitOrder() called');
-            
-            if (!validateForm()) {
-                console.log('Form validation failed');
-                return;
-            }
-
-            const name = nameInp.value.trim();
-            const phone = phoneInp.value.trim();
-            const address = addressInp.value.trim();
-            const area = getArea();
-            const boxes = getBoxes();
-            const total = boxes * PRICE_PER_BOX;
-            const instructions = instructionsInp.value.trim() || '(none)';
-
-            console.log('Order data:', { name, phone, address, area, boxes, total, instructions });
-
-            // Update invoice fields
-            document.getElementById("invName").innerText = name;
-            document.getElementById("invPhone").innerText = phone;
-            document.getElementById("invAddress").innerText = address;
-            document.getElementById("invArea").innerText = area;
-            document.getElementById("invBoxes").innerText = boxes;
-            document.getElementById("invTotal").innerText = total + " AED";
-            document.getElementById("invDelivery").innerText = area === "Dubai" ? 
-                "Orders within Dubai will be delivered within 1 day." : 
-                "Orders outside Dubai will be delivered only on weekends.";
-
-            // Show thank you
-            thankNameSpan.innerText = name;
-            thankYouDiv.style.display = 'block';
-            thankYouDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-            // Show invoice preview
-            const areaMsg = area === 'Dubai' ? '✅ within 1 day' : '📆 weekend only';
-            invoiceContent.innerHTML = `
-                <div class="row g-2 small">
-                    <div class="col-5 order-summary-label">Name</div><div class="col-7">${name}</div>
-                    <div class="col-5 order-summary-label">Phone</div><div class="col-7">${phone}</div>
-                    <div class="col-5 order-summary-label">Address</div><div class="col-7">${address}</div>
-                    <div class="col-5 order-summary-label">Area</div><div class="col-7">${area} ${areaMsg}</div>
-                    <div class="col-5 order-summary-label">Boxes</div><div class="col-7">${boxes} (${PRICE_PER_BOX} AED/box)</div>
-                    <div class="col-5 order-summary-label fw-bold">Total</div><div class="col-7 fw-bold">${total} AED</div>
-                    <div class="col-5 order-summary-label">Instructions</div><div class="col-7 text-break">${instructions}</div>
-                </div>
-            `;
-            invoicePreview.style.display = 'block';
-
-            // --- Submit to Google Sheet ---
-            const payload = {
-                name: name,
-                phone: phone,
-                address: address,
-                state: area,
-                boxes: boxes,
-                total: total,
-                instructions: instructions,
-                timestamp: new Date().toISOString()
-            };
-
-            console.log('Sending payload to:', SCRIPT_URL);
-            console.log('Payload:', payload);
-
-            // Show loading state
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span> Submitting...';
-
-            fetch(SCRIPT_URL, {
-                method: "POST",
-                mode: "no-cors",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            })
-            .then(() => {
-                console.log("✅ Order submitted successfully (no-cors response).");
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Place Order';
-            })
-            .catch((err) => {
-                console.error("❌ Submit error:", err);
-                alert("⚠️ There was a problem submitting your order. Please try again or contact us.\n\nError: " + err.message);
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Place Order';
-            });
-        }
-
-        // ============================================================
-        // DOWNLOAD PDF
-        // ============================================================
-        function downloadPDF() {
-            const name = nameInp.value.trim() || "Customer";
-            const phone = phoneInp.value.trim() || "-";
-            const address = addressInp.value.trim() || "-";
-            const area = getArea() || "-";
-            const boxes = getBoxes() || 0;
-            const total = boxes * PRICE_PER_BOX;
-            const instructions = instructionsInp.value.trim() || "(none)";
-
-            if (boxes < 1) {
-                alert("Please add at least 1 box before downloading the bill.");
-                return;
-            }
-            if (!getArea()) {
-                alert("Please select your area first.");
-                return;
-            }
-
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            doc.setFontSize(20);
-            doc.text("🥭 Mango Vista · Invoice", 20, 30);
-            doc.setFontSize(12);
-            doc.text(`Name: ${name}`, 20, 50);
-            doc.text(`Phone: ${phone}`, 20, 60);
-            doc.text(`Address: ${address}`, 20, 70);
-            doc.text(`Area: ${area}`, 20, 80);
-            doc.text(`Boxes: ${boxes} (${PRICE_PER_BOX} AED/box)`, 20, 90);
-            doc.text(`Total: ${total} AED`, 20, 100);
-            doc.text(`Instructions: ${instructions}`, 20, 110);
-            doc.text("Thank you for choosing Mango Vista!", 20, 140);
-            doc.text("📞 +971 52 231 7016", 20, 155);
-            doc.save("MangoVista_Order.pdf");
-        }
-
-        // ============================================================
-        // EVENT LISTENERS
-        // ============================================================
-        areaSel.addEventListener('change', updateUI);
-        
-        boxesInp.addEventListener('input', function() {
-            const area = getArea();
-            let val = parseInt(this.value) || 0;
-            if (area === 'Dubai' && val < 2 && val > 0) {
-                this.value = 2;
-                alert('Dubai minimum is 2 boxes.');
-            } else if (area === 'Sharjah' && val < 3 && val > 0) {
-                this.value = 3;
-                alert('Sharjah minimum is 3 boxes.');
-            }
-            calculateTotal();
-        });
-
-        submitBtn.addEventListener('click', submitOrder);
-
-        window.addEventListener('DOMContentLoaded', function() {
-            console.log('✅ DOM loaded, initializing...');
-            console.log('📡 SCRIPT_URL:', SCRIPT_URL);
-            updateUI();
-            console.log('✅ Ready!');
-        });
-
-        // Expose functions globally for debugging
-        window.submitOrder = submitOrder;
-        window.downloadPDF = downloadPDF;
-        window.calculateTotal = calculateTotal;
-        window.updateUI = updateUI;
-        window.SCRIPT_URL = SCRIPT_URL;
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
