@@ -232,7 +232,7 @@
                     <label class="form-label">Area <span class="required-star">*</span></label>
                     <select class="form-select" id="area" required>
                         <option value="">— Select your area —</option>
-                        <option value="Dubai">Dubai (delivery within 1 day)</option>
+                        <option value="Dubai">Dubai (delivery within 2 days, except Sunday)</option>
                         <option value="Sharjah">Sharjah (weekend delivery)</option>
                     </select>
                     <div id="deliveryMessage" class="mt-2" style="display:none;">
@@ -245,7 +245,7 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <label class="form-label">Select Fruit <span class="required-star">*</span></label>
                         <div>
-                            <span id="refreshStatus" class="text-muted small me-2">Auto-refresh: 1min</span>
+                            <span id="refreshStatus" class="text-muted small me-2">Auto-refresh: 1m</span>
                             <button type="button" class="btn-refresh" onclick="refreshFruits()" id="refreshBtn">
                                 <i class="bi bi-arrow-clockwise me-1"></i> Refresh
                             </button>
@@ -254,7 +254,7 @@
                     <select class="form-select" id="fruit" required>
                         <option value="">— Loading fruits... —</option>
                     </select>
-                    <div class="form-text">Fruits status Auto-refreshes every 1 minute</div>
+                    <div class="form-text">Auto-refreshes every 1 minute</div>
                 </div>
 
                 <!-- Boxes + price -->
@@ -287,7 +287,7 @@
                     </button>
                 </div>
                 <div class="cooldown-info text-center mt-2">
-                    <i class="bi bi-info-circle me-1"></i> One order per hour ·
+                    <i class="bi bi-info-circle me-1"></i> One order per hour · Press <kbd>Enter</kbd> to submit
                 </div>
             </form>
 
@@ -298,7 +298,7 @@
                     <div>
                         <h5 class="mb-0 fw-bold" style="color: #1f6d3a;">Thank you, <span id="thankName"></span>!</h5>
                         <p class="mb-0" style="color: #2a5e3a;">Your order has been received. We'll deliver as per your area.<br>
-                        <span class="small"><i class="bi bi-telephone-fill me-1"></i> For any query: <strong>+971 52 231 7016</strong></span></p>
+                        <span class="small"><i class="bi bi-telephone-fill me-1"></i> For urgent queries: <strong>+971 52 231 7016</strong></span></p>
                     </div>
                 </div>
             </div>
@@ -325,7 +325,7 @@
 
             <hr class="my-4">
             <div class="d-flex flex-wrap justify-content-between text-muted small">
-                <span><i class="bi bi-truck me-1"></i> Dubai (1 day) · Sharjah (weekend)</span>
+                <span><i class="bi bi-truck me-1"></i> Dubai (2 days, except Sunday) · Sharjah (weekend)</span>
                 <span><i class="bi bi-whatsapp me-1"></i> +971 52 231 7016</span>
             </div>
         </div>
