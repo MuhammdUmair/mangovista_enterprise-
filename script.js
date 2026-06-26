@@ -1,19 +1,22 @@
 /**
  * Being Healthy Order Form - JavaScript
+ * 
+ * DEPLOYMENT INFO:
+ * Web App URL: https://script.google.com/macros/s/AKfycbx2ipkS3pI512EC3Q2AmUHciZENMFF0Xa3R5MWpP64dvk2pKeqUuZ1HWel7WKoM_WcX/exec
+ * Sheet ID: 31_z1eRE3Fk_PaDj0oLFHnfvQeqGuyzbBhSoED-3MNc
  */
 
 // ============================================================
 // CONFIGURATION
 // ============================================================
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzFE6KTA_Xxfx0rSEUjU9S4t3HHinNwoyue2K8IasS1EMDrsmZkwY2hNU-mQkPv1usE/exec';
-const ORDER_COOLDOWN = 3600000; // 1 hour
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx2ipkS3pI512EC3Q2AmUHciZENMFF0Xa3R5MWpP64dvk2pKeqUuZ1HWel7WKoM_WcX/exec';
+const ORDER_COOLDOWN = 3600000; // 1 hour in milliseconds
 const REFRESH_INTERVAL = 60000; // 1 minute
 
 let fruitPrices = {};
 let lastOrderTime = 0;
 let refreshTimer = null;
 let isLoading = false;
-let lastFruitHash = '';
 
 // ============================================================
 // DOM REFERENCES
@@ -41,181 +44,147 @@ function getBoxes() { return parseInt(boxesInp.value) || 0; }
 function getFruitPrice() { return fruitPrices[getFruit()] || 45; }
 
 // ============================================================
-// SANITIZATION
+// SECURE INPUT SANITIZATION
 // ============================================================
 function sanitizeInput(input) {
     if (!input) return '';
-    return String(input).replace(/[<>]/g, '').trim();
+    return String(input)
+        .replace(/[<>]/g, '') // Remove < and >
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .trim();
+}
+
+function sanitizePhone(phone) {
+    if (!phone) return '';
+    // Allow only digits, +, spaces, and hyphens
+    return String(phone).replace(/[^0-9+\s-]/g, '').trim();
 }
 
 // ============================================================
-// HASH FUNCTION - Detects if data changed
-// ============================================================
-function generateHash(fruits) {
-    let hash = '';
-    const sorted = [...fruits].sort((a, b) => a.name.localeCompare(b.name));
-    sorted.forEach(f => {
-        hash += f.name + '|' + f.active + '|' + f.price + '|';
-    });
-    return hash;
-}
-
-// ============================================================
-// FETCH FRUITS - ALWAYS FRESH (uses POST to avoid caching)
+// LOAD FRUITS FROM GOOGLE SHEET WITH CACHE-BUSTING
 // ============================================================
 async function loadFruits() {
     if (isLoading) {
-        console.log('⏳ Already loading...');
+        console.log('⏳ Already loading, skipping...');
         return;
     }
     
     isLoading = true;
-    fruitSel.innerHTML = '<option value="">⏳ Loading...</option>';
     
     try {
-        const payload = {
-            action: 'getFruits',
-            timestamp: Date.now(),
-            random: Math.random().toString(36).substring(7)
-        };
+        // Add cache-busting timestamp
+        const url = SCRIPT_URL + '?action=getFruits&t=' + Date.now();
+        console.log('🔄 Loading fruits from:', url);
         
-        console.log('🔄 Fetching fruits via POST...');
-        
-        const response = await fetch(SCRIPT_URL, {
-            method: 'POST',
-            mode: 'cors',
+        const response = await fetch(url, {
+            method: 'GET',
             headers: {
-                'Content-Type': 'application/json',
-                'Cache-Control': 'no-cache, no-store'
-            },
-            body: JSON.stringify(payload)
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache'
+            }
         });
         
         if (!response.ok) {
-            throw new Error('HTTP ' + response.status);
+            throw new Error('Network response was not ok: ' + response.status);
         }
         
         const data = await response.json();
-        console.log('📦 Response:', data);
+        console.log('📦 Response data:', data);
         
-        if (data.success && data.fruits) {
-            const newHash = generateHash(data.fruits);
-            
-            // 🔥 Only update if data actually changed
-            if (newHash !== lastFruitHash) {
-                console.log('🔄 Data changed, updating dropdown...');
-                updateFruitDropdown(data.fruits);
-                lastFruitHash = newHash;
-                showToast('✅ Fruits updated!');
-            } else {
-                console.log('✅ No changes detected');
-                // Still ensure dropdown has data
-                if (fruitSel.options.length <= 1 && data.fruits.length > 0) {
-                    updateFruitDropdown(data.fruits);
-                }
-            }
+        if (data.success && data.fruits && data.fruits.length > 0) {
+            updateFruitDropdown(data.fruits);
         } else {
-            console.warn('⚠️ No fruits received');
+            console.warn('⚠️ No fruits from sheet, using fallback');
             setFallbackFruits();
         }
     } catch (error) {
-        console.error('❌ Error:', error);
+        console.error('❌ Error loading fruits:', error);
         setFallbackFruits();
+        // Show error to user
+        if (fruitSel.options.length <= 1) {
+            fruitSel.innerHTML = '<option value="">— Error loading fruits —</option>';
+            totalDisplay.textContent = '0 AED';
+        }
     } finally {
         isLoading = false;
     }
 }
 
 function updateFruitDropdown(fruits) {
+    // Clear existing options
     fruitSel.innerHTML = '<option value="">— Select a fruit —</option>';
     fruitPrices = {};
-    let count = 0;
+    
+    let hasActiveFruit = false;
+    let activeCount = 0;
     
     fruits.forEach(fruit => {
-        // 🔥 Check if active (TRUE/YES/1)
+        // Check if active (case insensitive)
         const isActive = String(fruit.active).toUpperCase() === 'TRUE' || 
                          String(fruit.active).toUpperCase() === 'YES' || 
                          String(fruit.active) === true;
         
         if (isActive && fruit.name) {
-            const name = sanitizeInput(fruit.name);
+            const fruitName = sanitizeInput(fruit.name);
+            const emoji = fruit.emoji || '🥭';
             const price = Number(fruit.price) || 45;
-            const emoji = fruit.emoji || '🍎';
             
             const option = document.createElement('option');
-            option.value = name;
-            option.textContent = emoji + ' ' + name;
+            option.value = fruitName;
+            option.textContent = emoji + ' ' + fruitName;
             fruitSel.appendChild(option);
-            fruitPrices[name] = price;
-            count++;
+            fruitPrices[fruitName] = price;
+            hasActiveFruit = true;
+            activeCount++;
+            
+            console.log(`✅ Added: ${fruitName} - ${price} AED`);
+        } else {
+            console.log(`⏸️ Skipped (inactive): ${fruit.name}`);
         }
     });
     
-    console.log(`📊 Loaded ${count} fruits:`, fruitPrices);
+    console.log(`📊 Loaded ${activeCount} active fruits with prices:`, fruitPrices);
     
-    if (count > 0 && fruitSel.options.length > 1) {
+    // Auto-select first fruit if available
+    if (hasActiveFruit && fruitSel.options.length > 1) {
         fruitSel.value = fruitSel.options[1].value;
         calculateTotal();
-    } else {
+    } else if (!hasActiveFruit) {
+        // No active fruits - show message
         fruitSel.innerHTML = '<option value="">— No fruits available —</option>';
         totalDisplay.textContent = '0 AED';
+        if (priceDisplay) {
+            priceDisplay.textContent = 'No fruits currently available';
+        }
     }
 }
 
 function setFallbackFruits() {
     const fallback = [
-        { name: 'Mango', price: 45 },
-        { name: 'Apple', price: 40 },
-        { name: 'Banana', price: 35 },
-        { name: 'Orange', price: 38 }
+        { name: 'Mango (Sindhri)', price: 45 }
     ];
     fruitSel.innerHTML = '<option value="">— Select a fruit —</option>';
     fallback.forEach(f => {
         const option = document.createElement('option');
         option.value = f.name;
-        option.textContent = f.name;
+        option.textContent = '🥭 ' + f.name;
         fruitSel.appendChild(option);
         fruitPrices[f.name] = f.price;
     });
+    console.log('📋 Fallback fruits loaded:', fruitPrices);
 }
 
 // ============================================================
-// TOAST NOTIFICATION
-// ============================================================
-function showToast(message) {
-    const existing = document.querySelector('.toast-notification');
-    if (existing) existing.remove();
-    
-    const toast = document.createElement('div');
-    toast.className = 'toast-notification';
-    toast.style.cssText = `
-        position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
-        background: #2e7d32; color: white; padding: 10px 24px;
-        border-radius: 30px; font-size: 14px; z-index: 9999;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        transition: opacity 0.3s; opacity: 1;
-    `;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
-}
-
-// ============================================================
-// REFRESH - Force fresh data
+// REFRESH FRUITS MANUALLY
 // ============================================================
 function refreshFruits() {
-    console.log('🔄 Manual refresh');
-    lastFruitHash = ''; // Force update
+    console.log('🔄 Manual refresh triggered');
     loadFruits();
-    showToast('🔄 Refreshing...');
 }
 
 // ============================================================
-// UI UPDATE
+// UI UPDATE FUNCTIONS
 // ============================================================
 function updateUI() {
     const area = getArea();
@@ -223,7 +192,7 @@ function updateUI() {
 
     if (area === 'Dubai') {
         deliveryMsg.style.display = 'block';
-        deliveryText.textContent = 'Dubai: delivery within 1 day.';
+        deliveryText.textContent = 'Dubai: delivery within 2 days (except Sunday).';
         if (boxes > 0 && boxes < 2) {
             boxes = 2;
             boxesInp.value = 2;
@@ -248,10 +217,14 @@ function calculateTotal() {
     const area = getArea();
     let boxes = getBoxes();
     const price = getFruitPrice();
+    const fruitName = getFruit() || 'No fruit selected';
     
+    // Update price display
     if (priceDisplay) {
-        if (getFruit() && getFruit() !== '⏳ Loading...') {
+        if (fruitName && fruitName !== 'No fruit selected' && fruitName !== '— Loading fruits...') {
             priceDisplay.textContent = 'Price: ' + price + ' AED per box · minimums: Dubai 2, Sharjah 3';
+        } else if (fruitName === '— Loading fruits...') {
+            priceDisplay.textContent = 'Loading fruits...';
         } else {
             priceDisplay.textContent = 'Please select a fruit';
         }
@@ -276,11 +249,11 @@ function calculateTotal() {
 }
 
 // ============================================================
-// VALIDATE
+// FORM VALIDATION
 // ============================================================
 function validateForm() {
     const name = sanitizeInput(nameInp.value);
-    const phone = sanitizeInput(phoneInp.value);
+    const phone = sanitizePhone(phoneInp.value);
     const address = sanitizeInput(addressInp.value);
     const area = getArea();
     const fruit = getFruit();
@@ -288,35 +261,44 @@ function validateForm() {
 
     if (!name) { alert('Please enter your full name.'); nameInp.focus(); return false; }
     if (name.length < 2) { alert('Name must be at least 2 characters.'); nameInp.focus(); return false; }
+    
     if (!phone) { alert('Phone number is required.'); phoneInp.focus(); return false; }
+    if (phone.length < 8) { alert('Please enter a valid phone number.'); phoneInp.focus(); return false; }
+    
     if (!address) { alert('Address is required.'); addressInp.focus(); return false; }
+    if (address.length < 5) { alert('Please enter a complete address.'); addressInp.focus(); return false; }
+    
     if (!area) { alert('Please select your area.'); areaSel.focus(); return false; }
-    if (!fruit || fruit === '⏳ Loading...' || fruit === '— No fruits available —') { 
-        alert('Please select a fruit.'); fruitSel.focus(); return false; 
+    if (!fruit) { alert('Please select a fruit.'); fruitSel.focus(); return false; }
+    if (fruit === '— Loading fruits...' || fruit === '— No fruits available —') { 
+        alert('Please wait for fruits to load or refresh.'); fruitSel.focus(); return false; 
     }
     if (boxes < 1) { alert('Please enter number of boxes.'); boxesInp.focus(); return false; }
     if (area === 'Dubai' && boxes < 2) { alert('Dubai minimum is 2 boxes.'); boxesInp.focus(); return false; }
     if (area === 'Sharjah' && boxes < 3) { alert('Sharjah minimum is 3 boxes.'); boxesInp.focus(); return false; }
+    
     return true;
 }
 
 // ============================================================
-// SUBMIT ORDER
+// SUBMIT ORDER WITH COOLDOWN
 // ============================================================
 function submitOrder() {
-    console.log('📤 submitOrder()');
+    console.log('📤 submitOrder() called');
     
+    // Check cooldown
     const now = Date.now();
     if (now - lastOrderTime < ORDER_COOLDOWN) {
         const remaining = Math.ceil((ORDER_COOLDOWN - (now - lastOrderTime)) / 60000);
-        alert('⚠️ One order per hour. Please wait ' + remaining + ' minute(s).');
+        alert('⚠️ You can only place one order per hour. Please wait ' + remaining + ' minute(s).');
         return;
     }
     
     if (!validateForm()) return;
 
+    // Sanitize all inputs
     const name = sanitizeInput(nameInp.value);
-    const phone = sanitizeInput(phoneInp.value);
+    const phone = sanitizePhone(phoneInp.value);
     const address = sanitizeInput(addressInp.value);
     const area = getArea();
     const fruit = getFruit();
@@ -325,7 +307,9 @@ function submitOrder() {
     const total = boxes * price;
     const instructions = sanitizeInput(instructionsInp.value) || '(none)';
 
-    // Update invoice
+    console.log('📋 Order data:', { name, phone, address, area, fruit, price, boxes, total });
+
+    // Update invoice fields
     document.getElementById("invName").innerText = name;
     document.getElementById("invPhone").innerText = phone;
     document.getElementById("invAddress").innerText = address;
@@ -334,15 +318,16 @@ function submitOrder() {
     document.getElementById("invBoxes").innerText = boxes;
     document.getElementById("invTotal").innerText = total + " AED";
     document.getElementById("invDelivery").innerText = area === "Dubai" ? 
-        "Orders within Dubai will be delivered within 1 day." : 
+        "Orders within Dubai will be delivered within 2 days (except Sunday)." : 
         "Orders outside Dubai will be delivered only on weekends.";
 
+    // Show thank you
     thankNameSpan.innerText = name;
     thankYouDiv.style.display = 'block';
     thankYouDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-    // Invoice preview
-    const areaMsg = area === 'Dubai' ? '✅ within 1 day' : '📆 weekend only';
+    // Show invoice preview
+    const areaMsg = area === 'Dubai' ? '✅ within 2 days (except Sunday)' : '📆 weekend only';
     invoiceContent.innerHTML = `
         <div class="row g-2 small">
             <div class="col-5 order-summary-label">Name</div><div class="col-7">${name}</div>
@@ -358,7 +343,7 @@ function submitOrder() {
     `;
     invoicePreview.style.display = 'block';
 
-    // Submit
+    // Submit to Google Sheet
     const payload = {
         name: name,
         phone: phone,
@@ -368,43 +353,48 @@ function submitOrder() {
         pricePerBox: price,
         boxes: boxes,
         total: total,
-        instructions: instructions
+        instructions: instructions,
+        timestamp: new Date().toISOString()
     };
+
+    console.log('📡 Sending payload to:', SCRIPT_URL);
+    console.log('📦 Payload:', payload);
 
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Submitting...';
 
     fetch(SCRIPT_URL, {
         method: "POST",
-        mode: "cors",
+        mode: "no-cors",
         headers: { 
             "Content-Type": "application/json",
             "Cache-Control": "no-cache"
         },
         body: JSON.stringify(payload)
     })
-    .then(response => response.json())
-    .then(data => {
-        console.log("✅ Order saved:", data);
-        lastOrderTime = Date.now();
+    .then(() => {
+        console.log("✅ Order submitted successfully.");
+        lastOrderTime = Date.now(); // Update cooldown
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Place Order';
-        setTimeout(refreshFruits, 1000);
+        
+        // Refresh fruits after order
+        setTimeout(loadFruits, 2000);
     })
     .catch((err) => {
-        console.error("❌ Error:", err);
-        alert("⚠️ There was a problem. Please try again.");
+        console.error("❌ Submit error:", err);
+        alert("⚠️ There was a problem submitting your order. Please try again.");
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Place Order';
     });
 }
 
 // ============================================================
-// DOWNLOAD PDF
+// DOWNLOAD PDF - FINAL VERSION
 // ============================================================
 function downloadPDF() {
     const name = sanitizeInput(nameInp.value) || "Not provided";
-    const phone = sanitizeInput(phoneInp.value) || "Not provided";
+    const phone = sanitizePhone(phoneInp.value) || "Not provided";
     const address = sanitizeInput(addressInp.value) || "Not provided";
     const area = getArea() || "Not selected";
     const fruit = getFruit() || "Not selected";
@@ -425,7 +415,7 @@ function downloadPDF() {
         alert("Please select your area.");
         return;
     }
-    if (!getFruit() || getFruit() === '⏳ Loading...') {
+    if (!getFruit() || getFruit() === '— Loading fruits...') {
         alert("Please select a fruit.");
         return;
     }
@@ -433,6 +423,7 @@ function downloadPDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('p', 'mm', 'a4');
 
+    // Header
     doc.setFontSize(24);
     doc.setTextColor(46, 125, 50);
     doc.text("Being Healthy", 20, 30);
@@ -451,10 +442,12 @@ function downloadPDF() {
     doc.setDrawColor(200, 185, 170);
     doc.line(20, 48, 190, 48);
 
+    // Company Info
     doc.setFontSize(9);
     doc.setTextColor(100);
     doc.text("Phone: +971 52 231 7016  |  Email: info@beinghealthy.ae", 20, 58);
 
+    // Customer Details
     doc.setFontSize(14);
     doc.setTextColor(46, 125, 50);
     doc.text("Customer Details", 20, 75);
@@ -475,6 +468,7 @@ function downloadPDF() {
     
     doc.text("Area: " + area, 20, y); y += 10;
 
+    // Order Summary
     doc.setFontSize(14);
     doc.setTextColor(46, 125, 50);
     doc.text("Order Summary", 20, y);
@@ -483,6 +477,7 @@ function downloadPDF() {
     doc.line(20, y, 190, y);
     y += 8;
 
+    // Table Header
     doc.setFontSize(10);
     doc.setTextColor(255, 255, 255);
     doc.setFillColor(46, 125, 50);
@@ -494,6 +489,7 @@ function downloadPDF() {
     doc.text("Total", 175, y);
     y += 8;
 
+    // Table Row
     doc.setTextColor(50);
     doc.setFontSize(10);
     doc.text("Fresh " + fruit + " Boxes", 25, y);
@@ -503,6 +499,7 @@ function downloadPDF() {
     doc.text(total + " AED", 170, y);
     y += 10;
 
+    // Total
     doc.setDrawColor(200, 185, 170);
     doc.line(20, y, 190, y);
     y += 6;
@@ -516,16 +513,18 @@ function downloadPDF() {
     doc.text(total + " AED", 168, y+1, { align: 'right' });
     y += 14;
 
+    // Delivery Info
     doc.setFillColor(235, 248, 235);
     doc.roundedRect(20, y, 170, 16, 3, 3, 'F');
     doc.setFontSize(10);
     doc.setTextColor(46, 125, 50);
-    const delMsg = area === "Dubai" ? "Dubai: Delivery within 1 day" : "Sharjah: Delivery on weekends only";
+    const delMsg = area === "Dubai" ? "Dubai: Delivery within 2 days (except Sunday)" : "Sharjah: Delivery on weekends only";
     doc.text(delMsg, 30, y+6);
     doc.setTextColor(80);
     doc.text("✨ Free delivery on all orders", 30, y+12);
     y += 22;
 
+    // Special Instructions
     if (instructions !== "None" && instructions !== "") {
         doc.setFontSize(11);
         doc.setTextColor(46, 125, 50);
@@ -540,6 +539,7 @@ function downloadPDF() {
         y += (instrLines.length * 6) + 12;
     }
 
+    // Footer
     doc.setDrawColor(46, 125, 50);
     doc.line(20, y, 190, y);
     y += 8;
@@ -557,21 +557,34 @@ function downloadPDF() {
 }
 
 // ============================================================
-// AUTO REFRESH
+// START AUTO-REFRESH
 // ============================================================
 function startAutoRefresh() {
-    if (refreshTimer) clearInterval(refreshTimer);
-    refreshTimer = setInterval(() => {
-        console.log('🔄 Auto-refresh (1 minute)');
+    if (refreshTimer) {
+        clearInterval(refreshTimer);
+    }
+    refreshTimer = setInterval(function() {
+        console.log('🔄 Auto-refreshing fruits (1m interval)...');
         loadFruits();
     }, REFRESH_INTERVAL);
+}
+
+function stopAutoRefresh() {
+    if (refreshTimer) {
+        clearInterval(refreshTimer);
+        refreshTimer = null;
+        console.log('⏹️ Auto-refresh stopped');
+    }
 }
 
 // ============================================================
 // EVENT LISTENERS
 // ============================================================
 areaSel.addEventListener('change', updateUI);
-fruitSel.addEventListener('change', calculateTotal);
+
+fruitSel.addEventListener('change', function() {
+    calculateTotal();
+});
 
 boxesInp.addEventListener('input', function() {
     const area = getArea();
@@ -588,6 +601,7 @@ boxesInp.addEventListener('input', function() {
 
 submitBtn.addEventListener('click', submitOrder);
 
+// Keyboard shortcut: Enter key submits
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Enter' && e.target.closest('#orderForm')) {
         e.preventDefault();
@@ -596,17 +610,31 @@ document.addEventListener('keydown', function(e) {
 });
 
 // ============================================================
-// INITIALIZE
+// INITIALIZATION
 // ============================================================
 window.addEventListener('DOMContentLoaded', function() {
-    console.log('✅ Initializing...');
+    console.log('✅ DOM loaded, initializing...');
+    console.log('📡 SCRIPT_URL:', SCRIPT_URL);
+    console.log('🔄 Refresh interval:', REFRESH_INTERVAL / 1000 + ' seconds');
+    console.log('⏱️ Order cooldown:', ORDER_COOLDOWN / 60000 + ' minutes');
+    
+    // Load fruits
     loadFruits();
     updateUI();
+    
+    // Start auto-refresh
     startAutoRefresh();
+    
+    console.log('✅ Ready!');
+});
+
+// Clean up on page unload
+window.addEventListener('beforeunload', function() {
+    stopAutoRefresh();
 });
 
 // ============================================================
-// EXPOSE
+// EXPOSE FUNCTIONS GLOBALLY
 // ============================================================
 window.submitOrder = submitOrder;
 window.downloadPDF = downloadPDF;
@@ -614,3 +642,6 @@ window.calculateTotal = calculateTotal;
 window.updateUI = updateUI;
 window.loadFruits = loadFruits;
 window.refreshFruits = refreshFruits;
+window.startAutoRefresh = startAutoRefresh;
+window.stopAutoRefresh = stopAutoRefresh;
+window.SCRIPT_URL = SCRIPT_URL;
