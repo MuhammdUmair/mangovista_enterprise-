@@ -1,292 +1,311 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Being Healthy · Order Fresh Fruits</title>
-    <!-- Bootstrap 5 + custom style -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- jsPDF for PDF bill -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <style>
-        body {
-            background: #f8f5f0;
-            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
-        }
-        .card {
-            border-radius: 28px;
-            border: none;
-            background: #ffffff;
-            box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.15);
-        }
-        .card-header {
-            background: transparent;
-            border-bottom: 2px solid #f0e8de;
-            padding-bottom: 0.5rem;
-        }
-        .card-header h2 {
-            color: #2e7d32;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-        }
-        .form-control, .form-select {
-            border-radius: 14px;
-            border: 1px solid #e0d6c8;
-            padding: 12px 16px;
-            background: #fcfaf7;
-            transition: all 0.2s;
-        }
-        .form-control:focus, .form-select:focus {
-            border-color: #2e7d32;
-            box-shadow: 0 0 0 0.2rem rgba(46, 125, 50, 0.2);
-            background: #fff;
-        }
-        .form-label {
-            font-weight: 600;
-            color: #3d2c1e;
-            margin-bottom: 4px;
-            font-size: 0.95rem;
-        }
-        .btn-green {
-            background: #2e7d32;
-            border: none;
-            color: #fff;
-            font-weight: 600;
-            padding: 12px 28px;
-            border-radius: 40px;
-            transition: all 0.2s;
-            letter-spacing: 0.3px;
-        }
-        .btn-green:hover {
-            background: #1b5e20;
-            color: #fff;
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(46, 125, 50, 0.3);
-        }
-        .btn-outline-green {
-            border: 2px solid #2e7d32;
-            color: #2e7d32;
-            background: transparent;
-            font-weight: 600;
-            padding: 12px 28px;
-            border-radius: 40px;
-            transition: all 0.2s;
-        }
-        .btn-outline-green:hover {
-            background: #2e7d32;
-            color: #fff;
-            transform: translateY(-2px);
-        }
-        .delivery-badge {
-            background: #eaf7e1;
-            color: #2a6b3a;
-            padding: 8px 18px;
-            border-radius: 40px;
-            font-weight: 500;
-            font-size: 0.9rem;
-            display: inline-block;
-        }
-        .total-box {
-            background: #fcf8f2;
-            border-radius: 16px;
-            padding: 12px 18px;
-            border: 1px solid #eaddcf;
-            font-weight: 700;
-            font-size: 1.3rem;
-            color: #2d1f12;
-        }
-        .invoice-preview {
-            background: #fcf9f5;
-            border: 1px solid #e6d9cb;
-            border-radius: 20px;
-        }
-        #thankYouMessage {
-            border-radius: 20px;
-            background: #e4f3e4;
-            border-left: 6px solid #2a8e4a;
-            transition: all 0.3s ease;
-        }
-        .whatsapp-float {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            background: #25d366;
-            color: white;
-            width: 60px;
-            height: 60px;
-            border-radius: 60px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 30px;
-            box-shadow: 0 6px 20px rgba(37, 211, 102, 0.4);
-            text-decoration: none;
-            z-index: 999;
-            transition: transform 0.2s;
-        }
-        .whatsapp-float:hover {
-            transform: scale(1.06);
-            color: white;
-        }
-        .required-star {
-            color: #c0392b;
-            margin-left: 2px;
-        }
-        .form-text {
-            color: #7a6a5a;
-            font-size: 0.8rem;
-            margin-top: 4px;
-        }
-        .order-summary-label {
-            color: #5a4a3a;
-            font-weight: 500;
-        }
-        .shadow-hover {
-            transition: box-shadow 0.2s;
-        }
-        .shadow-hover:hover {
-            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.06);
-        }
-        .spinner-border-sm {
-            width: 1.2rem;
-            height: 1.2rem;
-        }
-        #invoice {
-            display: none;
-        }
-        .thankyou {
-            color: green;
-            font-weight: bold;
-            text-align: center;
-            margin-top: 10px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container py-4" style="max-width: 680px;">
-        <div class="card shadow-hover p-4 p-md-5">
-            <div class="card-header text-center pb-3">
-                <h2 class="mb-0">🌿 Being Healthy</h2>
-                <p class="text-muted mb-0" style="font-size: 0.95rem;">Fresh fruits · delivered with care</p>
-            </div>
+/**
+ * Google Apps Script - Being Healthy Order Handler
+ * 
+ * Web App URL: https://script.google.com/macros/s/AKfycbx2ipkS3pI512EC3Q2AmUHciZENMFF0Xa3R5MWpP64dvk2pKeqUuZ1HWel7WKoM_WcX/exec
+ * Sheet ID: 31_z1eRE3Fk_PaDj0oLFHnfvQeqGuyzbBhSoED-3MNc
+ */
 
-            <!-- ORDER FORM -->
-            <form id="orderForm" class="mt-3">
-                <!-- Customer fields -->
-                <div class="mb-3">
-                    <label class="form-label">Full Name <span class="required-star">*</span></label>
-                    <input class="form-control" id="name" placeholder="e.g. Ahmed Al Maktoum" required>
-                </div>
+const SHEET_ID = '31_z1eRE3Fk_PaDj0oLFHnfvQeqGuyzbBhSoED-3MNc';
 
-                <div class="mb-3">
-                    <label class="form-label">Phone Number <span class="required-star">*</span></label>
-                    <input class="form-control" id="phone" placeholder="+971 52 231 7016" required>
-                </div>
+function doPost(e) {
+  try {
+    console.log('📥 doPost() called');
+    
+    // Check if it's a GET request for fruit config
+    if (e.parameter && e.parameter.action === 'getFruits') {
+      return getFruitsConfig();
+    }
+    
+    let data;
+    if (e.postData && e.postData.contents) {
+      data = JSON.parse(e.postData.contents);
+      console.log('📋 Parsed JSON data:', JSON.stringify(data));
+    } else if (e.parameter) {
+      data = e.parameter;
+      console.log('📋 Parameter data:', JSON.stringify(data));
+    } else {
+      throw new Error('No data received');
+    }
 
-                <div class="mb-3">
-                    <label class="form-label">Address <span class="required-star">*</span></label>
-                    <textarea class="form-control" id="address" rows="2" placeholder="Street, villa, apartment ..." required></textarea>
-                </div>
+    // Get the spreadsheet
+    let ss = SpreadsheetApp.openById(SHEET_ID);
+    console.log('📊 Spreadsheet opened successfully');
 
-                <!-- Area + delivery message -->
-                <div class="mb-3">
-                    <label class="form-label">Area <span class="required-star">*</span></label>
-                    <select class="form-select" id="area" required>
-                        <option value="">— Select your area —</option>
-                        <option value="Dubai">Dubai (delivery within 1 day)</option>
-                        <option value="Sharjah">Sharjah (weekend delivery)</option>
-                    </select>
-                    <div id="deliveryMessage" class="mt-2" style="display:none;">
-                        <span class="delivery-badge"><i class="bi bi-check-circle-fill me-1"></i> <span id="deliveryText"></span></span>
-                    </div>
-                </div>
+    // Get or create the Orders sheet
+    let sheet = ss.getSheetByName('Orders');
+    if (!sheet) {
+      console.log('📝 Orders sheet not found, creating new one...');
+      sheet = ss.insertSheet('Orders');
+      const headers = [
+        'Timestamp',
+        'Customer Name',
+        'Phone Number',
+        'Address',
+        'Area',
+        'Fruit Type',
+        'Price Per Box (AED)',
+        'Number of Boxes',
+        'Total Amount (AED)',
+        'Special Instructions',
+        'Order Status'
+      ];
+      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+      console.log('✅ Headers created');
+    }
 
-                <!-- Fruit Selection - Loaded from Google Sheet -->
-                <div class="mb-3">
-                    <label class="form-label">Select Fruit <span class="required-star">*</span></label>
-                    <select class="form-select" id="fruit" required>
-                        <option value="">— Loading fruits... —</option>
-                    </select>
-                    <div class="form-text">Fruits availability is managed from Google Sheet</div>
-                </div>
+    // Prepare row data
+    const timestamp = new Date();
+    const orderStatus = 'Pending';
 
-                <!-- Boxes + price – auto-update -->
-                <div class="row g-3 mb-3 align-items-end">
-                    <div class="col-7">
-                        <label class="form-label">Number of Boxes <span class="required-star">*</span></label>
-                        <input class="form-control" type="number" id="boxes" min="1" value="1" required style="font-size: 1.1rem;">
-                        <div class="form-text" id="priceDisplay">Price: 45 AED per box · minimums: Dubai 2, Sharjah 3</div>
-                    </div>
-                    <div class="col-5">
-                        <label class="form-label">Total Amount</label>
-                        <div class="total-box" id="totalDisplay">45 AED</div>
-                    </div>
-                </div>
+    const row = [
+      timestamp,
+      data.name || '',
+      data.phone || '',
+      data.address || '',
+      data.state || data.area || '',
+      data.fruit || 'Mango',
+      data.pricePerBox || 45,
+      data.boxes || 0,
+      data.total || 0,
+      data.instructions || '(none)',
+      orderStatus
+    ];
 
-                <!-- SPECIAL INSTRUCTIONS (optional) -->
-                <div class="mb-4">
-                    <label class="form-label">📝 Special instructions <span class="text-muted fw-normal">(optional)</span></label>
-                    <textarea class="form-control" id="instructions" rows="2" placeholder="e.g. gate code, call before arrival, leave with security ..."></textarea>
-                    <div class="form-text">Anything extra for the rider or our team.</div>
-                </div>
+    console.log('📝 Appending row:', JSON.stringify(row));
 
-                <!-- Buttons -->
-                <div class="d-flex flex-wrap gap-3 mt-2">
-                    <button type="button" class="btn btn-green flex-fill" id="submitBtn">
-                        <i class="bi bi-check2-circle me-1"></i> Place Order
-                    </button>
-                    <button type="button" class="btn btn-outline-green flex-fill" onclick="downloadPDF()">
-                        <i class="bi bi-download me-1"></i> Bill PDF
-                    </button>
-                </div>
-            </form>
+    // Append row to sheet
+    sheet.appendRow(row);
+    console.log('✅ Row appended, new row number:', sheet.getLastRow());
 
-            <!-- Thank you message (hidden) -->
-            <div id="thankYouMessage" class="mt-4 p-3 px-4" style="display: none;">
-                <div class="d-flex align-items-center gap-3">
-                    <span style="font-size: 2.6rem;">🎉</span>
-                    <div>
-                        <h5 class="mb-0 fw-bold" style="color: #1f6d3a;">Thank you, <span id="thankName"></span>!</h5>
-                        <p class="mb-0" style="color: #2a5e3a;">Your order has been received. We'll deliver as per your area.<br>
-                        <span class="small"><i class="bi bi-telephone-fill me-1"></i> For urgent queries: <strong>+971 52 231 7016</strong></span></p>
-                    </div>
-                </div>
-            </div>
+    // Return success response
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        success: true,
+        message: 'Order saved successfully!',
+        timestamp: timestamp.toISOString(),
+        rowAdded: sheet.getLastRow()
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
 
-            <!-- Invoice preview (shown after submit) -->
-            <div id="invoicePreview" class="invoice-preview p-3 mt-4" style="display: none;">
-                <h6 class="border-bottom pb-2 mb-2" style="color: #4d3826;"><i class="bi bi-receipt me-2"></i>Order summary</h6>
-                <div id="invoiceContent"></div>
-            </div>
+  } catch (error) {
+    console.log('❌ ERROR:', error.toString());
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        success: false,
+        error: error.toString()
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
 
-            <!-- Hidden invoice div for compatibility -->
-            <div id="invoice" style="display: none;">
-                <h2>Being Healthy Invoice</h2>
-                <p><strong>Name:</strong> <span id="invName"></span></p>
-                <p><strong>Phone:</strong> <span id="invPhone"></span></p>
-                <p><strong>Address:</strong> <span id="invAddress"></span></p>
-                <p><strong>Area:</strong> <span id="invArea"></span></p>
-                <p><strong>Fruit:</strong> <span id="invFruit"></span></p>
-                <p><strong>Boxes:</strong> <span id="invBoxes"></span></p>
-                <p><strong>Total Amount:</strong> <span id="invTotal"></span></p>
-                <p><strong>Expected Delivery:</strong> <span id="invDelivery"></span></p>
-                <div class="thankyou">Thank You for Choosing Being Healthy!</div>
-            </div>
+// ============================================================
+// GET FRUITS CONFIGURATION FROM SHEET
+// ============================================================
+function getFruitsConfig() {
+  try {
+    console.log('📋 getFruitsConfig() called');
+    let ss = SpreadsheetApp.openById(SHEET_ID);
+    let configSheet = ss.getSheetByName('FruitConfig');
+    
+    // If FruitConfig sheet doesn't exist, create it with default data
+    if (!configSheet) {
+      console.log('📝 Creating FruitConfig sheet...');
+      configSheet = ss.insertSheet('FruitConfig');
+      const headers = ['Fruit Name', 'Emoji', 'Active (TRUE/FALSE)', 'Price (AED)'];
+      configSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      configSheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+      
+      const defaultFruits = [
+        ['Mango', '🥭', 'TRUE', 45],
+        ['Apple', '🍎', 'TRUE', 40],
+        ['Banana', '🍌', 'TRUE', 35],
+        ['Orange', '🍊', 'TRUE', 38],
+        ['Strawberry', '🍓', 'FALSE', 50],
+        ['Grapes', '🍇', 'TRUE', 42],
+        ['Watermelon', '🍉', 'FALSE', 55],
+        ['Pineapple', '🍍', 'TRUE', 48],
+        ['Peach', '🍑', 'FALSE', 45],
+        ['Cherry', '🍒', 'FALSE', 60]
+      ];
+      
+      if (defaultFruits.length > 0) {
+        configSheet.getRange(2, 1, defaultFruits.length, 4).setValues(defaultFruits);
+        console.log('✅ Default fruits added');
+      }
+    }
+    
+    // Read fruit data
+    const lastRow = configSheet.getLastRow();
+    if (lastRow < 2) {
+      console.log('⚠️ No fruit data found');
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: true,
+          fruits: []
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    const data = configSheet.getRange(2, 1, lastRow - 1, 4).getValues();
+    const fruits = [];
+    
+    data.forEach(row => {
+      const name = row[0] || '';
+      const emoji = row[1] || '🍎';
+      // Convert to string and trim, then check for TRUE
+      const activeValue = String(row[2] || 'FALSE').trim().toUpperCase();
+      const active = activeValue === 'TRUE' || activeValue === 'YES' || activeValue === '1';
+      const price = row[3] || 45;
+      
+      if (name) {
+        fruits.push({
+          name: String(name).trim(),
+          emoji: String(emoji).trim(),
+          active: active,
+          price: Number(price) || 45
+        });
+        console.log(`📦 Fruit: ${name}, Active: ${active}, Price: ${price}`);
+      }
+    });
+    
+    console.log(`📋 Loaded ${fruits.length} fruits from config`);
+    
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        success: true,
+        fruits: fruits
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+      
+  } catch (error) {
+    console.log('❌ Error loading fruit config:', error);
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        success: false,
+        error: error.toString(),
+        fruits: []
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
 
-            <hr class="my-4">
-            <div class="d-flex flex-wrap justify-content-between text-muted small">
-                <span><i class="bi bi-truck me-1"></i> Dubai (1 day) · Sharjah (weekend)</span>
-                <span><i class="bi bi-whatsapp me-1"></i> +971 52 231 7016</span>
-            </div>
-        </div>
-    </div>
+// ============================================================
+// SETUP FUNCTIONS - Run these once in Apps Script
+// ============================================================
 
-    <!-- WhatsApp floating -->
-    <a href="https://wa.me/971522317016" target="_blank" class="whatsapp-float" aria-label="WhatsApp">
-        <i class="bi bi-whatsapp"></i>
-    </a>
+// Run this to set up the Orders sheet
+function setupOrdersSheet() {
+  console.log('📝 Setting up Orders sheet...');
+  let ss = SpreadsheetApp.openById(SHEET_ID);
+  let sheet = ss.getSheetByName('Orders');
+  
+  if (!sheet) {
+    sheet = ss.insertSheet('Orders');
+  } else {
+    sheet.clear();
+  }
+  
+  const headers = [
+    'Timestamp',
+    'Customer Name',
+    'Phone Number',
+    'Address',
+    'Area',
+    'Fruit Type',
+    'Price Per Box (AED)',
+    'Number of Boxes',
+    'Total Amount (AED)',
+    'Special Instructions',
+    'Order Status'
+  ];
+  
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+  sheet.setFrozenRows(1);
+  sheet.getRange('A:A').setNumberFormat('yyyy-mm-dd hh:mm:ss');
+  
+  console.log('✅ Orders sheet setup complete!');
+  console.log('📊 Sheet URL: ' + ss.getUrl());
+  return ss.getUrl();
+}
 
-    <script src="script.js"></script>
-</body>
-</html>
+// Run this to set up the Fruit Config sheet
+function setupFruitConfigSheet() {
+  console.log('📝 Setting up FruitConfig sheet...');
+  let ss = SpreadsheetApp.openById(SHEET_ID);
+  let configSheet = ss.getSheetByName('FruitConfig');
+  
+  if (!configSheet) {
+    configSheet = ss.insertSheet('FruitConfig');
+  } else {
+    configSheet.clear();
+  }
+  
+  const headers = ['Fruit Name', 'Emoji', 'Active (TRUE/FALSE)', 'Price (AED)'];
+  configSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  configSheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+  
+  const defaultFruits = [
+    ['Mango', '🥭', 'TRUE', 45],
+    ['Apple', '🍎', 'TRUE', 40],
+    ['Banana', '🍌', 'TRUE', 35],
+    ['Orange', '🍊', 'TRUE', 38],
+    ['Strawberry', '🍓', 'FALSE', 50],
+    ['Grapes', '🍇', 'TRUE', 42],
+    ['Watermelon', '🍉', 'FALSE', 55],
+    ['Pineapple', '🍍', 'TRUE', 48],
+    ['Peach', '🍑', 'FALSE', 45],
+    ['Cherry', '🍒', 'FALSE', 60]
+  ];
+  
+  if (defaultFruits.length > 0) {
+    configSheet.getRange(2, 1, defaultFruits.length, 4).setValues(defaultFruits);
+  }
+  
+  configSheet.autoResizeColumns(1, 4);
+  
+  console.log('✅ Fruit Config sheet setup complete!');
+  console.log('📊 Sheet URL: ' + ss.getUrl());
+  return ss.getUrl();
+}
+
+// Run this to set up everything at once
+function setupAll() {
+  console.log('🚀 Starting full setup...');
+  setupOrdersSheet();
+  setupFruitConfigSheet();
+  console.log('🎉 All setup complete!');
+}
+
+// Test function to verify backend connection
+function testDoPost() {
+  console.log('🧪 Running test...');
+  const testData = {
+    name: 'Test Customer',
+    phone: '+971 50 123 4567',
+    address: 'Test Address, Dubai',
+    state: 'Dubai',
+    fruit: 'Orange',
+    pricePerBox: 38,
+    boxes: 3,
+    total: 114,
+    instructions: 'Test instruction - leave with security',
+    timestamp: new Date().toISOString()
+  };
+
+  const event = {
+    postData: {
+      contents: JSON.stringify(testData)
+    }
+  };
+
+  try {
+    const result = doPost(event);
+    console.log('✅ Test result:', result.getContent());
+    return result.getContent();
+  } catch (error) {
+    console.log('❌ Test ERROR:', error.toString());
+    return 'Error: ' + error.toString();
+  }
+}
