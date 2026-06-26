@@ -2,15 +2,16 @@
  * Being Healthy Order Form - JavaScript
  * 
  * DEPLOYMENT INFO:
- * Web App URL: https://script.google.com/macros/s/AKfycbyRRZr640zMiP0tdDbwPS8mHEG5GRBKlYs69YvhMoFh6byhcMRUED9TwFzjtyYSp9IP/exec
- * Deployment ID: AKfycbyRRZr640zMiP0tdDbwPS8mHEG5GRBKlYs69YvhMoFh6byhcMRUED9TwFzjtyYSp9IP
- * Sheet ID: 131_z1eRE3Fk_PaDj0oLFHnfvQeqGuyzbBhSoED-3MNc
+ * Web App URL: https://script.google.com/macros/s/AKfycbx2ipkS3pI512EC3Q2AmUHciZENMFF0Xa3R5MWpP64dvk2pKeqUuZ1HWel7WKoM_WcX/exec
+ * Sheet ID: 31_z1eRE3Fk_PaDj0oLFHnfvQeqGuyzbBhSoED-3MNc
  */
 
-// CONFIGURATION
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyRRZr640zMiP0tdDbwPS8mHEG5GRBKlYs69YvhMoFh6byhcMRUED9TwFzjtyYSp9IP/exec';
+// ============================================================
+// CONFIGURATION - UPDATED WITH YOUR NEW WEB APP URL
+// ============================================================
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx2ipkS3pI512EC3Q2AmUHciZENMFF0Xa3R5MWpP64dvk2pKeqUuZ1HWel7WKoM_WcX/exec';
 const FRUIT_CONFIG_URL = SCRIPT_URL + '?action=getFruits';
-let fruitPrices = {}; // Store fruit prices dynamically
+let fruitPrices = {};
 
 // DOM REFERENCES
 const nameInp = document.getElementById('name');
@@ -20,6 +21,7 @@ const areaSel = document.getElementById('area');
 const fruitSel = document.getElementById('fruit');
 const boxesInp = document.getElementById('boxes');
 const totalDisplay = document.getElementById('totalDisplay');
+const priceDisplay = document.getElementById('priceDisplay');
 const deliveryMsg = document.getElementById('deliveryMessage');
 const deliveryText = document.getElementById('deliveryText');
 const instructionsInp = document.getElementById('instructions');
@@ -32,12 +34,7 @@ const submitBtn = document.getElementById('submitBtn');
 function getArea() { return areaSel.value; }
 function getFruit() { return fruitSel.value; }
 function getBoxes() { return parseInt(boxesInp.value) || 0; }
-
-// Get price for selected fruit
-function getFruitPrice() {
-    const fruit = getFruit();
-    return fruitPrices[fruit] || 45; // Default to 45 if not found
-}
+function getFruitPrice() { return fruitPrices[getFruit()] || 45; }
 
 // ============================================================
 // LOAD FRUITS FROM GOOGLE SHEET
@@ -45,32 +42,30 @@ function getFruitPrice() {
 async function loadFruits() {
     try {
         console.log('🔄 Loading fruits from Google Sheet...');
+        console.log('📡 Fetching from:', FRUIT_CONFIG_URL);
+        
         const response = await fetch(FRUIT_CONFIG_URL);
         const data = await response.json();
         
+        console.log('📦 Response data:', data);
+        
         if (data.success && data.fruits && data.fruits.length > 0) {
-            // Clear existing options
             fruitSel.innerHTML = '<option value="">— Select a fruit —</option>';
-            
-            // Clear price cache
             fruitPrices = {};
             
-            // Add fruits that are active
             data.fruits.forEach(fruit => {
                 if (fruit.active !== false) {
                     const option = document.createElement('option');
                     option.value = fruit.name;
-                    option.textContent = `${fruit.emoji || '🍎'} ${fruit.name}`;
+                    option.textContent = (fruit.emoji || '🍎') + ' ' + fruit.name;
                     fruitSel.appendChild(option);
-                    // Store price
                     fruitPrices[fruit.name] = fruit.price || 45;
                 }
             });
             
-            console.log(`✅ Loaded ${fruitSel.options.length - 1} active fruits`);
-            console.log('📊 Fruit prices:', fruitPrices);
+            console.log('✅ Loaded fruits with prices:', fruitPrices);
             
-            // Update total when fruit changes
+            // Auto-select first fruit if available
             if (fruitSel.options.length > 1) {
                 fruitSel.value = fruitSel.options[1].value;
                 calculateTotal();
@@ -86,24 +81,21 @@ async function loadFruits() {
 }
 
 function setFallbackFruits() {
-    const fallbackFruits = [
+    const fallback = [
         { name: 'Mango', price: 45 },
         { name: 'Apple', price: 40 },
         { name: 'Banana', price: 35 },
-        { name: 'Orange', price: 38 },
-        { name: 'Strawberry', price: 50 },
-        { name: 'Grapes', price: 42 },
-        { name: 'Watermelon', price: 55 },
-        { name: 'Pineapple', price: 48 }
+        { name: 'Orange', price: 38 }
     ];
     fruitSel.innerHTML = '<option value="">— Select a fruit —</option>';
-    fallbackFruits.forEach(fruit => {
+    fallback.forEach(f => {
         const option = document.createElement('option');
-        option.value = fruit.name;
-        option.textContent = fruit.name;
+        option.value = f.name;
+        option.textContent = f.name;
         fruitSel.appendChild(option);
-        fruitPrices[fruit.name] = fruit.price;
+        fruitPrices[f.name] = f.price;
     });
+    console.log('📋 Fallback fruits loaded:', fruitPrices);
 }
 
 function updateUI() {
@@ -136,7 +128,12 @@ function updateUI() {
 function calculateTotal() {
     const area = getArea();
     let boxes = getBoxes();
-    const pricePerBox = getFruitPrice();
+    const price = getFruitPrice();
+    
+    // Update price display
+    if (priceDisplay) {
+        priceDisplay.textContent = 'Price: ' + price + ' AED per box · minimums: Dubai 2, Sharjah 3';
+    }
     
     if (boxes <= 0) { 
         totalDisplay.textContent = '0 AED'; 
@@ -150,7 +147,8 @@ function calculateTotal() {
         boxes = 3;
         boxesInp.value = 3;
     }
-    const total = boxes * pricePerBox;
+    
+    const total = boxes * price;
     totalDisplay.textContent = total + ' AED';
     return total;
 }
@@ -166,21 +164,21 @@ function validateForm() {
     if (!name) { alert('Please enter your full name.'); nameInp.focus(); return false; }
     if (!phone) { alert('Phone number is required.'); phoneInp.focus(); return false; }
     if (!address) { alert('Address is required.'); addressInp.focus(); return false; }
-    if (!area) { alert('Please select your area (Dubai / Sharjah).'); areaSel.focus(); return false; }
+    if (!area) { alert('Please select your area.'); areaSel.focus(); return false; }
     if (!fruit) { alert('Please select a fruit.'); fruitSel.focus(); return false; }
-    if (boxes < 1) { alert('Please enter the number of boxes (minimum 1).'); boxesInp.focus(); return false; }
+    if (boxes < 1) { alert('Please enter number of boxes.'); boxesInp.focus(); return false; }
     if (area === 'Dubai' && boxes < 2) { alert('Dubai minimum is 2 boxes.'); boxesInp.focus(); return false; }
     if (area === 'Sharjah' && boxes < 3) { alert('Sharjah minimum is 3 boxes.'); boxesInp.focus(); return false; }
     return true;
 }
 
+// ============================================================
+// SUBMIT ORDER
+// ============================================================
 function submitOrder() {
-    console.log('submitOrder() called');
+    console.log('📤 submitOrder() called');
     
-    if (!validateForm()) {
-        console.log('Form validation failed');
-        return;
-    }
+    if (!validateForm()) return;
 
     const name = nameInp.value.trim();
     const phone = phoneInp.value.trim();
@@ -188,11 +186,11 @@ function submitOrder() {
     const area = getArea();
     const fruit = getFruit();
     const boxes = getBoxes();
-    const pricePerBox = getFruitPrice();
-    const total = boxes * pricePerBox;
+    const price = getFruitPrice();
+    const total = boxes * price;
     const instructions = instructionsInp.value.trim() || '(none)';
 
-    console.log('Order data:', { name, phone, address, area, fruit, pricePerBox, boxes, total, instructions });
+    console.log('📋 Order data:', { name, phone, address, area, fruit, price, boxes, total });
 
     // Update invoice fields
     document.getElementById("invName").innerText = name;
@@ -220,7 +218,7 @@ function submitOrder() {
             <div class="col-5 order-summary-label">Address</div><div class="col-7">${address}</div>
             <div class="col-5 order-summary-label">Area</div><div class="col-7">${area} ${areaMsg}</div>
             <div class="col-5 order-summary-label">Fruit</div><div class="col-7">${fruit}</div>
-            <div class="col-5 order-summary-label">Price/Box</div><div class="col-7">${pricePerBox} AED</div>
+            <div class="col-5 order-summary-label">Price/Box</div><div class="col-7">${price} AED</div>
             <div class="col-5 order-summary-label">Boxes</div><div class="col-7">${boxes}</div>
             <div class="col-5 order-summary-label fw-bold">Total</div><div class="col-7 fw-bold">${total} AED</div>
             <div class="col-5 order-summary-label">Instructions</div><div class="col-7 text-break">${instructions}</div>
@@ -235,18 +233,18 @@ function submitOrder() {
         address: address,
         state: area,
         fruit: fruit,
-        pricePerBox: pricePerBox,
+        pricePerBox: price,
         boxes: boxes,
         total: total,
         instructions: instructions,
         timestamp: new Date().toISOString()
     };
 
-    console.log('Sending payload to:', SCRIPT_URL);
-    console.log('Payload:', payload);
+    console.log('📡 Sending payload to:', SCRIPT_URL);
+    console.log('📦 Payload:', payload);
 
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span> Submitting...';
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Submitting...';
 
     fetch(SCRIPT_URL, {
         method: "POST",
@@ -261,258 +259,186 @@ function submitOrder() {
     })
     .catch((err) => {
         console.error("❌ Submit error:", err);
-        alert("⚠️ There was a problem submitting your order. Please try again or contact us.\n\nError: " + err.message);
+        alert("⚠️ There was a problem submitting your order. Please try again.");
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Place Order';
     });
 }
 
 // ============================================================
-// DOWNLOAD PDF - FIXED ENCODING ISSUE
+// DOWNLOAD PDF - CLEAN VERSION
 // ============================================================
 function downloadPDF() {
-    // Get all form values
     const name = nameInp.value.trim() || "Not provided";
     const phone = phoneInp.value.trim() || "Not provided";
     const address = addressInp.value.trim() || "Not provided";
     const area = getArea() || "Not selected";
     const fruit = getFruit() || "Not selected";
     const boxes = getBoxes() || 0;
-    const pricePerBox = getFruitPrice();
-    const total = boxes * pricePerBox;
+    const price = getFruitPrice();
+    const total = boxes * price;
     const instructions = instructionsInp.value.trim() || "None";
     
-    // Get current date and time
     const now = new Date();
-    const dateStr = now.toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-    });
-    const timeStr = now.toLocaleTimeString('en-GB', {
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+    const dateStr = now.toLocaleDateString('en-GB');
+    const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
-    // Validation
     if (boxes < 1) {
-        alert("⚠️ Please add at least 1 box before downloading the bill.");
+        alert("Please add at least 1 box.");
         return;
     }
     if (!getArea()) {
-        alert("⚠️ Please select your area first.");
+        alert("Please select your area.");
         return;
     }
     if (!getFruit()) {
-        alert("⚠️ Please select a fruit.");
+        alert("Please select a fruit.");
         return;
     }
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('p', 'mm', 'a4');
-    const pageWidth = 210;
-    const pageHeight = 297;
 
-    // ===== BACKGROUND =====
-    doc.setFillColor(250, 248, 245);
-    doc.rect(0, 0, pageWidth, pageHeight, 'F');
-
-    // ===== TOP DECORATIVE BORDER =====
-    doc.setFillColor(46, 125, 50);
-    doc.rect(0, 0, pageWidth, 8, 'F');
-    
-    // ===== HEADER SECTION =====
-    doc.setFontSize(28);
+    // Header
+    doc.setFontSize(24);
     doc.setTextColor(46, 125, 50);
-    doc.setFont('helvetica', 'bold');
-    doc.text("🌿 Being Healthy", 20, 30);
+    doc.text("Being Healthy", 20, 30);
     
     doc.setFontSize(12);
     doc.setTextColor(100);
-    doc.setFont('helvetica', 'normal');
-    doc.text("Fresh Fruits · Delivered with Care", 20, 40);
+    doc.text("Fresh Fruits - Delivered with Care", 20, 40);
     
-    // Invoice details - right side
+    const invNum = 'BH-' + now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + '-' + String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0');
     doc.setFontSize(10);
     doc.setTextColor(80);
-    const invoiceNum = 'BH-' + now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0') + '-' + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
-    doc.text(`Invoice #: ${invoiceNum}`, 140, 25);
-    doc.text(`Date: ${dateStr}`, 140, 32);
-    doc.text(`Time: ${timeStr}`, 140, 39);
+    doc.text("Invoice: " + invNum, 140, 25);
+    doc.text("Date: " + dateStr, 140, 32);
+    doc.text("Time: " + timeStr, 140, 39);
 
-    // Divider
     doc.setDrawColor(200, 185, 170);
     doc.line(20, 48, 190, 48);
 
-    // ===== COMPANY INFO BOX =====
-    doc.setFillColor(245, 242, 238);
-    doc.roundedRect(20, 55, 170, 20, 3, 3, 'F');
+    // Company Info
     doc.setFontSize(9);
     doc.setTextColor(100);
-    doc.text("📞 +971 52 231 7016  |  📧 info@beinghealthy.ae  |  🌐 www.beinghealthy.ae", 30, 67);
+    doc.text("Phone: +971 52 231 7016  |  Email: info@beinghealthy.ae", 20, 58);
 
-    // ===== CUSTOMER INFORMATION =====
+    // Customer Details
     doc.setFontSize(14);
     doc.setTextColor(46, 125, 50);
-    doc.setFont('helvetica', 'bold');
-    doc.text("📋 Customer Details", 20, 90);
-    
+    doc.text("Customer Details", 20, 75);
+    doc.setDrawColor(200, 185, 170);
+    doc.line(20, 79, 190, 79);
+
     doc.setFontSize(10);
     doc.setTextColor(60);
-    doc.setFont('helvetica', 'normal');
-    doc.setDrawColor(200, 185, 170);
-    doc.line(20, 95, 190, 95);
+    let y = 90;
     
-    let yPos = 105;
-    const customerData = [
-        ["Full Name", name],
-        ["Phone Number", phone],
-        ["Delivery Address", address],
-        ["Area", area]
-    ];
+    doc.text("Full Name: " + name, 20, y); y += 7;
+    doc.text("Phone: " + phone, 20, y); y += 7;
     
-    customerData.forEach(([label, value]) => {
-        doc.setFillColor(248, 246, 243);
-        doc.rect(20, yPos - 4, 55, 8, 'F');
-        doc.setTextColor(100);
-        doc.text(label + ":", 22, yPos);
-        doc.setTextColor(40);
-        if (label === "Delivery Address" && value.length > 35) {
-            const lines = doc.splitTextToSize(value, 100);
-            doc.text(lines, 80, yPos);
-            yPos += (lines.length * 6);
-        } else {
-            doc.text(value, 80, yPos);
-            yPos += 8;
-        }
-    });
+    doc.text("Address: ", 20, y);
+    const addrLines = doc.splitTextToSize(address, 120);
+    doc.text(addrLines, 55, y);
+    y += (addrLines.length * 6) + 2;
+    
+    doc.text("Area: " + area, 20, y); y += 10;
 
-    // ===== ORDER SUMMARY =====
-    yPos += 10;
+    // Order Summary
     doc.setFontSize(14);
     doc.setTextColor(46, 125, 50);
-    doc.setFont('helvetica', 'bold');
-    doc.text("🛒 Order Summary", 20, yPos);
-    yPos += 5;
+    doc.text("Order Summary", 20, y);
+    y += 5;
     doc.setDrawColor(200, 185, 170);
-    doc.line(20, yPos, 190, yPos);
-    yPos += 8;
+    doc.line(20, y, 190, y);
+    y += 8;
 
-    // Table header with green background
-    doc.setFillColor(46, 125, 50);
-    doc.rect(20, yPos - 4, 170, 9, 'F');
+    // Table Header
+    doc.setFontSize(10);
     doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.text("Item", 25, yPos + 1);
-    doc.text("Fruit", 85, yPos + 1);
-    doc.text("Qty", 125, yPos + 1);
-    doc.text("Price", 150, yPos + 1);
-    doc.text("Total", 175, yPos + 1);
-    yPos += 8;
+    doc.setFillColor(46, 125, 50);
+    doc.rect(20, y-4, 170, 8, 'F');
+    doc.text("Item", 25, y);
+    doc.text("Fruit", 85, y);
+    doc.text("Qty", 125, y);
+    doc.text("Price", 150, y);
+    doc.text("Total", 175, y);
+    y += 8;
 
-    // Table row
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
+    // Table Row
     doc.setTextColor(50);
-    
-    if (yPos % 2 === 0) {
-        doc.setFillColor(248, 246, 243);
-        doc.rect(20, yPos - 4, 170, 8, 'F');
-    }
-    doc.text(`Fresh ${fruit} Boxes`, 25, yPos);
-    doc.text(fruit, 85, yPos);
-    doc.text(`${boxes}`, 128, yPos);
-    doc.text(`${pricePerBox} AED`, 148, yPos);
-    doc.text(`${total} AED`, 170, yPos);
-    yPos += 10;
+    doc.setFontSize(10);
+    doc.text("Fresh " + fruit + " Boxes", 25, y);
+    doc.text(fruit, 85, y);
+    doc.text(String(boxes), 128, y);
+    doc.text(price + " AED", 148, y);
+    doc.text(total + " AED", 170, y);
+    y += 10;
 
-    // Total line
+    // Total
     doc.setDrawColor(200, 185, 170);
-    doc.line(20, yPos, 190, yPos);
-    yPos += 6;
-    
+    doc.line(20, y, 190, y);
+    y += 6;
     doc.setFillColor(245, 242, 238);
-    doc.rect(120, yPos - 4, 70, 12, 'F');
-    doc.setFont('helvetica', 'bold');
+    doc.rect(120, y-4, 70, 10, 'F');
     doc.setFontSize(12);
     doc.setTextColor(46, 125, 50);
-    doc.text("TOTAL", 125, yPos + 2);
+    doc.text("TOTAL", 125, y+1);
     doc.setFontSize(14);
     doc.setTextColor(200, 50, 50);
-    doc.text(`${total} AED`, 168, yPos + 2, { align: 'right' });
-    yPos += 14;
+    doc.text(total + " AED", 168, y+1, { align: 'right' });
+    y += 14;
 
-    // ===== DELIVERY INFORMATION =====
+    // Delivery Info
     doc.setFillColor(235, 248, 235);
-    doc.roundedRect(20, yPos, 170, 18, 3, 3, 'F');
+    doc.roundedRect(20, y, 170, 16, 3, 3, 'F');
     doc.setFontSize(10);
     doc.setTextColor(46, 125, 50);
-    doc.setFont('helvetica', 'bold');
-    const deliveryMsg = area === "Dubai" ? 
-        "🚚 Dubai: Delivery within 1 day" : 
-        "🚚 Sharjah: Delivery on weekends only";
-    doc.text(deliveryMsg, 30, yPos + 6);
-    doc.setFont('helvetica', 'normal');
+    const delMsg = area === "Dubai" ? "Dubai: Delivery within 1 day" : "Sharjah: Delivery on weekends only";
+    doc.text(delMsg, 30, y+6);
     doc.setTextColor(80);
-    doc.text("📦 Free delivery on orders above 100 AED", 30, yPos + 13);
-    yPos += 24;
+    doc.text("Free delivery on orders above 100 AED", 30, y+12);
+    y += 22;
 
-    // ===== SPECIAL INSTRUCTIONS =====
+    // Special Instructions
     if (instructions !== "None" && instructions !== "") {
         doc.setFontSize(11);
         doc.setTextColor(46, 125, 50);
-        doc.setFont('helvetica', 'bold');
-        doc.text("📝 Special Instructions", 20, yPos);
-        yPos += 6;
+        doc.text("Special Instructions", 20, y);
+        y += 6;
         doc.setFontSize(10);
         doc.setTextColor(60);
-        doc.setFont('helvetica', 'normal');
         const instrLines = doc.splitTextToSize(instructions, 160);
         doc.setFillColor(248, 246, 243);
-        doc.roundedRect(20, yPos - 2, 170, (instrLines.length * 6) + 6, 3, 3, 'F');
-        doc.text(instrLines, 25, yPos + 3);
-        yPos += (instrLines.length * 6) + 12;
+        doc.roundedRect(20, y-2, 170, (instrLines.length * 6) + 6, 3, 3, 'F');
+        doc.text(instrLines, 25, y+3);
+        y += (instrLines.length * 6) + 12;
     }
 
-    // ===== FOOTER =====
+    // Footer
     doc.setDrawColor(46, 125, 50);
-    doc.line(20, yPos, 190, yPos);
-    yPos += 8;
-
+    doc.line(20, y, 190, y);
+    y += 8;
     doc.setFontSize(12);
     doc.setTextColor(46, 125, 50);
-    doc.setFont('helvetica', 'bold');
-    doc.text("Thank you for choosing Being Healthy!", 20, yPos);
-    yPos += 6;
-    
+    doc.text("Thank you for choosing Being Healthy!", 20, y);
+    y += 6;
     doc.setFontSize(9);
     doc.setTextColor(100);
-    doc.setFont('helvetica', 'normal');
-    doc.text("We appreciate your business and look forward to serving you again.", 20, yPos);
-    yPos += 8;
+    doc.text("We appreciate your business and look forward to serving you again.", 20, y);
+    y += 8;
+    doc.text("Phone: +971 52 231 7016  |  Email: info@beinghealthy.ae", 20, y);
 
-    // Contact footer
-    doc.setFillColor(245, 242, 238);
-    doc.rect(0, pageHeight - 25, pageWidth, 25, 'F');
-    doc.setFontSize(9);
-    doc.setTextColor(80);
-    doc.text("📞 +971 52 231 7016", 20, pageHeight - 12);
-    doc.text("📧 info@beinghealthy.ae", 80, pageHeight - 12);
-    doc.text("🌐 www.beinghealthy.ae", 140, pageHeight - 12);
-    doc.text("📍 Dubai · Sharjah", 20, pageHeight - 4);
-
-    // Bottom green bar
-    doc.setFillColor(46, 125, 50);
-    doc.rect(0, pageHeight - 2, pageWidth, 2, 'F');
-
-    // ===== SAVE =====
-    doc.save(`BeingHealthy_Invoice_${invoiceNum}.pdf`);
+    doc.save("BeingHealthy_Invoice_" + invNum + ".pdf");
 }
 
-// Event listeners
+// ============================================================
+// EVENT LISTENERS
+// ============================================================
 areaSel.addEventListener('change', updateUI);
-fruitSel.addEventListener('change', calculateTotal);
+fruitSel.addEventListener('change', function() {
+    calculateTotal();
+});
 
 boxesInp.addEventListener('input', function() {
     const area = getArea();
