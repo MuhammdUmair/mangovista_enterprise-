@@ -68,9 +68,7 @@ async function loadFruits() {
     isLoading = true;
     
     // Show loading state
-    if (fruitSel.options.length <= 1) {
-        fruitSel.innerHTML = '<option value="">— Loading fruits... —</option>';
-    }
+    fruitSel.innerHTML = '<option value="">⏳ Loading fruits...</option>';
     
     try {
         // Build URL with cache-busting
@@ -96,17 +94,17 @@ async function loadFruits() {
         
         if (data.success && data.fruits && data.fruits.length > 0) {
             updateFruitDropdown(data.fruits);
+        } else if (data.success && data.fruits && data.fruits.length === 0) {
+            fruitSel.innerHTML = '<option value="">— No fruits available —</option>';
+            totalDisplay.textContent = '0 AED';
+            console.log('⚠️ No active fruits found');
         } else {
-            console.warn('⚠️ No fruits from sheet, using fallback');
+            console.warn('⚠️ API returned error or no fruits:', data);
             setFallbackFruits();
         }
     } catch (error) {
         console.error('❌ Error loading fruits:', error);
-        // Only show error if we have no fruits at all
-        if (fruitSel.options.length <= 1) {
-            fruitSel.innerHTML = '<option value="">— Error loading fruits —</option>';
-            totalDisplay.textContent = '0 AED';
-        }
+        setFallbackFruits();
     } finally {
         isLoading = false;
     }
@@ -223,9 +221,9 @@ function calculateTotal() {
     const fruitName = getFruit() || 'No fruit selected';
     
     if (priceDisplay) {
-        if (fruitName && fruitName !== 'No fruit selected' && fruitName !== '— Loading fruits...') {
+        if (fruitName && fruitName !== 'No fruit selected' && fruitName !== '⏳ Loading fruits...') {
             priceDisplay.textContent = 'Price: ' + price + ' AED per box · minimums: Dubai 2, Sharjah 3';
-        } else if (fruitName === '— Loading fruits...') {
+        } else if (fruitName === '⏳ Loading fruits...') {
             priceDisplay.textContent = 'Loading fruits...';
         } else {
             priceDisplay.textContent = 'Please select a fruit';
@@ -269,7 +267,7 @@ function validateForm() {
     if (address.length < 5) { alert('Please enter a complete address.'); addressInp.focus(); return false; }
     if (!area) { alert('Please select your area.'); areaSel.focus(); return false; }
     if (!fruit) { alert('Please select a fruit.'); fruitSel.focus(); return false; }
-    if (fruit === '— Loading fruits...' || fruit === '— No fruits available —' || fruit === '— Error loading fruits —') { 
+    if (fruit === '⏳ Loading fruits...' || fruit === '— No fruits available —' || fruit === '— Error loading fruits —') { 
         alert('Please wait for fruits to load or refresh.'); fruitSel.focus(); return false; 
     }
     if (boxes < 1) { alert('Please enter number of boxes.'); boxesInp.focus(); return false; }
@@ -402,7 +400,7 @@ function downloadPDF() {
         alert("Please select your area.");
         return;
     }
-    if (!getFruit() || getFruit() === '— Loading fruits...') {
+    if (!getFruit() || getFruit() === '⏳ Loading fruits...') {
         alert("Please select a fruit.");
         return;
     }
