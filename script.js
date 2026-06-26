@@ -167,7 +167,7 @@ function generateInvoice() {
 
     // --- Submit to Google Sheet ---
     // ★★★ REPLACE WITH YOUR ACTUAL GOOGLE SCRIPT WEB APP URL ★★★
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx_your_script_id_here/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw31D2mQe-IyxBxwYlPLzKrMoxFcJm0tNUyNX7_6ZTXQ05qh2g_Z-SHgppM3RH7mnIbkA/exec";
 
     const payload = {
         name: name,
