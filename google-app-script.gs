@@ -8,49 +8,27 @@
 const SHEET_ID = '131_z1eRE3Fk_PaDj0oLFHnfvQeqGuyzbBhSoED-3MNc';
 
 // ============================================================
-// CORS Helper - Add proper headers
+// CORS Helper
 // ============================================================
-function createCORSResponse(data) {
+function corsResponse(data) {
     return ContentService
         .createTextOutput(JSON.stringify(data))
         .setMimeType(ContentService.MimeType.JSON)
         .setHeader('Access-Control-Allow-Origin', '*')
         .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         .setHeader('Access-Control-Allow-Headers', 'Content-Type')
-        .setHeader('Access-Control-Max-Age', '86400')
-        // 🔥 KEY FIX: Force no-cache at the response level
-        .setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0')
-        .setHeader('Pragma', 'no-cache')
-        .setHeader('Expires', '0');
+        .setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
 }
 
 // ============================================================
-// DO OPTIONS - Handle preflight requests
+// DO OPTIONS
 // ============================================================
 function doOptions(e) {
-    return createCORSResponse({ success: true });
+    return corsResponse({ success: true });
 }
 
 // ============================================================
-// DO GET - Handles all GET requests
-// ============================================================
-function doGet(e) {
-    console.log('📥 doGet() called');
-    
-    // Check if it's a request for fruit config
-    if (e && e.parameter && e.parameter.action === 'getFruits') {
-        return getFruitsConfig(e);
-    }
-    
-    // Default response
-    return createCORSResponse({
-        success: false,
-        message: 'Invalid action. Use ?action=getFruits'
-    });
-}
-
-// ============================================================
-// DO POST - Handles order submissions
+// DO POST - Handles BOTH order submission AND fruit fetching
 // ============================================================
 function doPost(e) {
     try {
@@ -59,14 +37,25 @@ function doPost(e) {
         let data;
         if (e.postData && e.postData.contents) {
             data = JSON.parse(e.postData.contents);
-            console.log('📋 Parsed JSON data:', JSON.stringify(data));
         } else if (e.parameter) {
             data = e.parameter;
-            console.log('📋 Parameter data:', JSON.stringify(data));
         } else {
             throw new Error('No data received');
         }
 
+        // ============================================================
+        // If action is 'getFruits', return fruit config (NO CACHING)
+        // ============================================================
+        if (data.action === 'getFruits') {
+            console.log('📋 Fetching fruits via POST (no cache)');
+            return getFruitsConfig();
+        }
+
+        // ============================================================
+        // Otherwise, it's an order submission
+        // ============================================================
+        console.log('📋 Processing order...');
+        
         // Validate required fields
         const required = ['name', 'phone', 'address', 'state', 'fruit', 'boxes', 'total'];
         for (const field of required) {
@@ -75,39 +64,22 @@ function doPost(e) {
             }
         }
 
-        // Get the spreadsheet
         let ss = SpreadsheetApp.openById(SHEET_ID);
-        console.log('📊 Spreadsheet opened successfully');
-
-        // Get or create the Orders sheet
         let sheet = ss.getSheetByName('Orders');
+        
         if (!sheet) {
-            console.log('📝 Orders sheet not found, creating new one...');
             sheet = ss.insertSheet('Orders');
             const headers = [
-                'Timestamp',
-                'Customer Name',
-                'Phone Number',
-                'Address',
-                'Area',
-                'Fruit Type',
-                'Price Per Box (AED)',
-                'Number of Boxes',
-                'Total Amount (AED)',
-                'Special Instructions',
-                'Order Status'
+                'Timestamp', 'Customer Name', 'Phone Number', 'Address', 'Area',
+                'Fruit Type', 'Price Per Box (AED)', 'Number of Boxes',
+                'Total Amount (AED)', 'Special Instructions', 'Order Status'
             ];
             sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
             sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
-            console.log('✅ Headers created');
         }
 
-        // Prepare row data
-        const timestamp = new Date();
-        const orderStatus = 'Pending';
-
         const row = [
-            timestamp,
+            new Date(),
             data.name || '',
             data.phone || '',
             data.address || '',
@@ -117,26 +89,20 @@ function doPost(e) {
             data.boxes || 0,
             data.total || 0,
             data.instructions || '(none)',
-            orderStatus
+            'Pending'
         ];
 
-        console.log('📝 Appending row:', JSON.stringify(row));
-
-        // Append row to sheet
         sheet.appendRow(row);
-        console.log('✅ Row appended, new row number:', sheet.getLastRow());
+        console.log('✅ Order saved');
 
-        // Return success response with CORS headers
-        return createCORSResponse({
+        return corsResponse({
             success: true,
-            message: 'Order saved successfully!',
-            timestamp: timestamp.toISOString(),
-            rowAdded: sheet.getLastRow()
+            message: 'Order saved successfully!'
         });
 
     } catch (error) {
-        console.log('❌ ERROR:', error.toString());
-        return createCORSResponse({
+        console.log('❌ ERROR:', error);
+        return corsResponse({
             success: false,
             error: error.toString()
         });
@@ -144,20 +110,16 @@ function doPost(e) {
 }
 
 // ============================================================
-// GET FRUITS CONFIGURATION - FORCES FRESH DATA
+// GET FRUITS CONFIG - Called via POST to avoid caching
 // ============================================================
-function getFruitsConfig(e) {
+function getFruitsConfig() {
     try {
-        console.log('📋 getFruitsConfig() called');
-        
-        // 🔥 KEY FIX: Log the timestamp to verify cache-busting
-        const requestTime = e && e.parameter ? e.parameter.t : 'unknown';
-        console.log('📋 Request timestamp:', requestTime);
+        console.log('📋 getFruitsConfig() called via POST');
         
         let ss = SpreadsheetApp.openById(SHEET_ID);
         let configSheet = ss.getSheetByName('FruitConfig');
         
-        // If FruitConfig sheet doesn't exist, create it with default data
+        // Create sheet if it doesn't exist
         if (!configSheet) {
             console.log('📝 Creating FruitConfig sheet...');
             configSheet = ss.insertSheet('FruitConfig');
@@ -180,26 +142,14 @@ function getFruitsConfig(e) {
             
             if (defaultFruits.length > 0) {
                 configSheet.getRange(2, 1, defaultFruits.length, 4).setValues(defaultFruits);
-                console.log('✅ Default fruits added');
             }
         }
         
-        // 🔥 KEY FIX: Force a fresh read by getting the sheet's data range
-        // This ensures we're reading the latest data
         const lastRow = configSheet.getLastRow();
-        console.log('📊 FruitConfig last row:', lastRow);
-        
         if (lastRow < 2) {
-            console.log('⚠️ No fruit data found');
-            return createCORSResponse({
-                success: true,
-                fruits: [],
-                _timestamp: new Date().toISOString(),
-                _requestTime: requestTime
-            });
+            return corsResponse({ success: true, fruits: [] });
         }
         
-        // 🔥 KEY FIX: Read ALL data fresh from the sheet
         const data = configSheet.getRange(2, 1, lastRow - 1, 4).getValues();
         const fruits = [];
         
@@ -207,8 +157,7 @@ function getFruitsConfig(e) {
             const row = data[i];
             const name = row[0] || '';
             const emoji = row[1] || '🍎';
-            const activeValue = String(row[2] || 'FALSE').trim().toUpperCase();
-            const active = activeValue === 'TRUE' || activeValue === 'YES' || activeValue === '1';
+            const active = String(row[2] || 'FALSE').trim().toUpperCase() === 'TRUE';
             const price = row[3] || 45;
             
             if (name) {
@@ -218,88 +167,68 @@ function getFruitsConfig(e) {
                     active: active,
                     price: Number(price) || 45
                 });
-                console.log(`📦 Fruit: ${name}, Active: ${active}, Price: ${price}`);
             }
         }
         
-        console.log(`📋 Loaded ${fruits.length} fruits from config`);
-        console.log(`📋 Response timestamp: ${new Date().toISOString()}`);
+        console.log(`📋 Loaded ${fruits.length} fruits`);
         
-        // 🔥 KEY FIX: Return the fresh data with a timestamp
-        return createCORSResponse({
+        return corsResponse({
             success: true,
             fruits: fruits,
-            _timestamp: new Date().toISOString(),
-            _requestTime: requestTime,
-            _count: fruits.length
+            _timestamp: new Date().toISOString()
         });
 
     } catch (error) {
-        console.log('❌ Error loading fruit config:', error);
-        return createCORSResponse({
+        console.log('❌ Error:', error);
+        return corsResponse({
             success: false,
             error: error.toString(),
-            fruits: [],
-            _timestamp: new Date().toISOString()
+            fruits: []
         });
     }
 }
 
 // ============================================================
-// SETUP FUNCTIONS - Run these once
+// DO GET - Redirects to POST (for testing)
 // ============================================================
-
-// Run this to set up the Orders sheet
-function setupOrdersSheet() {
-    console.log('📝 Setting up Orders sheet...');
-    let ss = SpreadsheetApp.openById(SHEET_ID);
-    let sheet = ss.getSheetByName('Orders');
-    
-    if (!sheet) {
-        sheet = ss.insertSheet('Orders');
-    } else {
-        sheet.clear();
+function doGet(e) {
+    // Redirect to POST for fruit fetching
+    if (e && e.parameter && e.parameter.action === 'getFruits') {
+        return getFruitsConfig();
     }
-    
-    const headers = [
-        'Timestamp',
-        'Customer Name',
-        'Phone Number',
-        'Address',
-        'Area',
-        'Fruit Type',
-        'Price Per Box (AED)',
-        'Number of Boxes',
-        'Total Amount (AED)',
-        'Special Instructions',
-        'Order Status'
-    ];
-    
-    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-    sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
-    sheet.setFrozenRows(1);
-    sheet.getRange('A:A').setNumberFormat('yyyy-mm-dd hh:mm:ss');
-    
-    console.log('✅ Orders sheet setup complete!');
-    console.log('📊 Sheet URL: ' + ss.getUrl());
-    return ss.getUrl();
+    return corsResponse({
+        success: false,
+        message: 'Use POST method. Action: getFruits'
+    });
 }
 
-// Run this to set up the Fruit Config sheet
-function setupFruitConfigSheet() {
-    console.log('📝 Setting up FruitConfig sheet...');
+// ============================================================
+// SETUP - Run once
+// ============================================================
+function setupAll() {
+    console.log('🚀 Setting up...');
     let ss = SpreadsheetApp.openById(SHEET_ID);
+    
+    // Orders sheet
+    let ordersSheet = ss.getSheetByName('Orders');
+    if (!ordersSheet) ordersSheet = ss.insertSheet('Orders');
+    ordersSheet.clear();
+    const headers = [
+        'Timestamp', 'Customer Name', 'Phone Number', 'Address', 'Area',
+        'Fruit Type', 'Price Per Box (AED)', 'Number of Boxes',
+        'Total Amount (AED)', 'Special Instructions', 'Order Status'
+    ];
+    ordersSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    ordersSheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+    ordersSheet.setFrozenRows(1);
+    
+    // Fruit Config sheet
     let configSheet = ss.getSheetByName('FruitConfig');
-    
-    if (!configSheet) {
-        configSheet = ss.insertSheet('FruitConfig');
-    } else {
-        configSheet.clear();
-    }
-    
-    const headers = ['Fruit Name', 'Emoji', 'Active (TRUE/FALSE)', 'Price (AED)'];
-    configSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-    configSheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+    if (!configSheet) configSheet = ss.insertSheet('FruitConfig');
+    configSheet.clear();
+    const configHeaders = ['Fruit Name', 'Emoji', 'Active (TRUE/FALSE)', 'Price (AED)'];
+    configSheet.getRange(1, 1, 1, configHeaders.length).setValues([configHeaders]);
+    configSheet.getRange(1, 1, 1, configHeaders.length).setFontWeight('bold');
     
     const defaultFruits = [
         ['Mango', '🥭', 'TRUE', 45],
@@ -313,33 +242,8 @@ function setupFruitConfigSheet() {
         ['Peach', '🍑', 'FALSE', 45],
         ['Cherry', '🍒', 'FALSE', 60]
     ];
-    
-    if (defaultFruits.length > 0) {
-        configSheet.getRange(2, 1, defaultFruits.length, 4).setValues(defaultFruits);
-    }
-    
+    configSheet.getRange(2, 1, defaultFruits.length, 4).setValues(defaultFruits);
     configSheet.autoResizeColumns(1, 4);
     
-    console.log('✅ Fruit Config sheet setup complete!');
-    console.log('📊 Sheet URL: ' + ss.getUrl());
-    return ss.getUrl();
-}
-
-// Run this to set up everything at once
-function setupAll() {
-    console.log('🚀 Starting full setup...');
-    setupOrdersSheet();
-    setupFruitConfigSheet();
-    console.log('🎉 All setup complete!');
-}
-
-// ============================================================
-// TEST FUNCTION - Run this in Apps Script to test
-// ============================================================
-function testGetFruits() {
-    console.log('🧪 Testing getFruits...');
-    const result = getFruitsConfig({ parameter: { action: 'getFruits', t: Date.now() } });
-    const content = result.getContent();
-    console.log('📊 Result:', content);
-    return content;
+    console.log('✅ Setup complete!');
 }
