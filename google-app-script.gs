@@ -5,7 +5,7 @@
  * Sheet ID: 31_z1eRE3Fk_PaDj0oLFHnfvQeqGuyzbBhSoED-3MNc
  */
 
-const SHEET_ID = '131_z1eRE3Fk_PaDj0oLFHnfvQeqGuyzbBhSoED-3MNc';
+const SHEET_ID = '31_z1eRE3Fk_PaDj0oLFHnfvQeqGuyzbBhSoED-3MNc';
 
 // ============================================================
 // MAIN POST HANDLER
@@ -111,16 +111,11 @@ function doPost(e) {
 }
 
 // ============================================================
-// GET FRUITS CONFIGURATION - WITH FORCE NO-CACHE
+// GET FRUITS CONFIGURATION - SIMPLIFIED & RELIABLE
 // ============================================================
 function getFruitsConfig(e) {
   try {
     console.log('📋 getFruitsConfig() called');
-    
-    // 🔥 KEY FIX: Log the request parameters to verify cache-busting
-    if (e && e.parameter) {
-      console.log('📋 Request parameters:', JSON.stringify(e.parameter));
-    }
     
     let ss = SpreadsheetApp.openById(SHEET_ID);
     let configSheet = ss.getSheetByName('FruitConfig');
@@ -152,16 +147,19 @@ function getFruitsConfig(e) {
       }
     }
     
-    // 🔥 KEY FIX: Force a sheet refresh by getting the last modified time
-    // This ensures we're reading fresh data
-    const lastModified = configSheet.getLastRow();
-    console.log('📊 FruitConfig last row:', lastModified);
-    
-    // Read fruit data
+    // Read fruit data directly from sheet
     const lastRow = configSheet.getLastRow();
+    console.log('📊 FruitConfig last row:', lastRow);
+    
     if (lastRow < 2) {
       console.log('⚠️ No fruit data found');
-      return createCachedResponse({ success: true, fruits: [] });
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: true,
+          fruits: [],
+          _timestamp: new Date().toISOString()
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
     }
     
     const data = configSheet.getRange(2, 1, lastRow - 1, 4).getValues();
@@ -170,7 +168,6 @@ function getFruitsConfig(e) {
     data.forEach(row => {
       const name = row[0] || '';
       const emoji = row[1] || '🍎';
-      // Convert to string and trim, then check for TRUE
       const activeValue = String(row[2] || 'FALSE').trim().toUpperCase();
       const active = activeValue === 'TRUE' || activeValue === 'YES' || activeValue === '1';
       const price = row[3] || 45;
@@ -188,37 +185,27 @@ function getFruitsConfig(e) {
     
     console.log(`📋 Loaded ${fruits.length} fruits from config`);
     
-    // 🔥 KEY FIX: Add timestamp and a hash to the response to prevent caching
+    // Return response with timestamp
     const responseData = {
       success: true,
       fruits: fruits,
-      _timestamp: new Date().toISOString(),
-      _cacheBuster: Date.now()
+      _timestamp: new Date().toISOString()
     };
     
-    return createCachedResponse(responseData);
-      
+    return ContentService
+      .createTextOutput(JSON.stringify(responseData))
+      .setMimeType(ContentService.MimeType.JSON);
+
   } catch (error) {
     console.log('❌ Error loading fruit config:', error);
-    return createCachedResponse({
-      success: false,
-      error: error.toString(),
-      fruits: []
-    });
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        success: false,
+        error: error.toString(),
+        fruits: []
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
   }
-}
-
-// ============================================================
-// HELPER: Create response with anti-caching headers
-// ============================================================
-function createCachedResponse(data) {
-  // 🔥 KEY FIX: Set headers to prevent caching at all levels
-  return ContentService
-    .createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON)
-    .setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0, post-check=0, pre-check=0')
-    .setHeader('Pragma', 'no-cache')
-    .setHeader('Expires', '0');
 }
 
 // ============================================================
