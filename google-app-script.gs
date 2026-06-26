@@ -153,7 +153,9 @@ function getFruitsConfig() {
     data.forEach(row => {
       const name = row[0] || '';
       const emoji = row[1] || '🍎';
-      const active = String(row[2] || 'FALSE').toUpperCase() === 'TRUE';
+      // Convert to string and trim, then check for TRUE
+      const activeValue = String(row[2] || 'FALSE').trim().toUpperCase();
+      const active = activeValue === 'TRUE' || activeValue === 'YES' || activeValue === '1';
       const price = row[3] || 45;
       
       if (name) {
@@ -163,6 +165,7 @@ function getFruitsConfig() {
           active: active,
           price: Number(price) || 45
         });
+        console.log(`📦 Fruit: ${name}, Active: ${active}, Price: ${price}`);
       }
     });
     
