@@ -541,4 +541,79 @@ function startAutoRefresh() {
         clearInterval(refreshTimer);
     }
     refreshTimer = setInterval(function() {
-        console.log('🔄 Auto-refreshing fruits (1 minute interval)...
+        console.log('🔄 Auto-refreshing fruits (1 minute interval)...');
+        loadFruits();
+    }, REFRESH_INTERVAL);
+}
+
+function stopAutoRefresh() {
+    if (refreshTimer) {
+        clearInterval(refreshTimer);
+        refreshTimer = null;
+        console.log('⏹️ Auto-refresh stopped');
+    }
+}
+
+// ============================================================
+// EVENT LISTENERS
+// ============================================================
+areaSel.addEventListener('change', updateUI);
+
+fruitSel.addEventListener('change', function() {
+    calculateTotal();
+});
+
+boxesInp.addEventListener('input', function() {
+    const area = getArea();
+    let val = parseInt(this.value) || 0;
+    if (area === 'Dubai' && val < 2 && val > 0) {
+        this.value = 2;
+        alert('Dubai minimum is 2 boxes.');
+    } else if (area === 'Sharjah' && val < 3 && val > 0) {
+        this.value = 3;
+        alert('Sharjah minimum is 3 boxes.');
+    }
+    calculateTotal();
+});
+
+submitBtn.addEventListener('click', submitOrder);
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && e.target.closest('#orderForm')) {
+        e.preventDefault();
+        submitOrder();
+    }
+});
+
+// ============================================================
+// INITIALIZATION
+// ============================================================
+window.addEventListener('DOMContentLoaded', function() {
+    console.log('✅ DOM loaded, initializing...');
+    console.log('📡 SCRIPT_URL:', SCRIPT_URL);
+    console.log('🔄 Refresh interval:', REFRESH_INTERVAL / 60000 + ' minute(s)');
+    console.log('⏱️ Order cooldown:', ORDER_COOLDOWN / 60000 + ' minutes');
+    
+    loadFruits();
+    updateUI();
+    startAutoRefresh();
+    
+    console.log('✅ Ready!');
+});
+
+window.addEventListener('beforeunload', function() {
+    stopAutoRefresh();
+});
+
+// ============================================================
+// EXPOSE FUNCTIONS GLOBALLY
+// ============================================================
+window.submitOrder = submitOrder;
+window.downloadPDF = downloadPDF;
+window.calculateTotal = calculateTotal;
+window.updateUI = updateUI;
+window.loadFruits = loadFruits;
+window.refreshFruits = refreshFruits;
+window.startAutoRefresh = startAutoRefresh;
+window.stopAutoRefresh = stopAutoRefresh;
+window.SCRIPT_URL = SCRIPT_URL;
