@@ -11,7 +11,7 @@
 // ============================================================
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx2ipkS3pI512EC3Q2AmUHciZENMFF0Xa3R5MWpP64dvk2pKeqUuZ1HWel7WKoM_WcX/exec';
 const ORDER_COOLDOWN = 3600000; // 1 hour in milliseconds
-const REFRESH_INTERVAL = 60000; // 1 minute
+const REFRESH_INTERVAL = 600000; // 1 minute
 
 let fruitPrices = {};
 let lastOrderTime = 0;
