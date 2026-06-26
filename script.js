@@ -7,10 +7,10 @@
  * Sheet ID: 131_z1eRE3Fk_PaDj0oLFHnfvQeqGuyzbBhSoED-3MNc
  */
 
-// CONFIGURATION - UPDATED WITH YOUR NEW SHEET
+// CONFIGURATION
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyRRZr640zMiP0tdDbwPS8mHEG5GRBKlYs69YvhMoFh6byhcMRUED9TwFzjtyYSp9IP/exec';
 const FRUIT_CONFIG_URL = SCRIPT_URL + '?action=getFruits';
-const PRICE_PER_BOX = 45;
+let fruitPrices = {}; // Store fruit prices dynamically
 
 // DOM REFERENCES
 const nameInp = document.getElementById('name');
@@ -33,6 +33,12 @@ function getArea() { return areaSel.value; }
 function getFruit() { return fruitSel.value; }
 function getBoxes() { return parseInt(boxesInp.value) || 0; }
 
+// Get price for selected fruit
+function getFruitPrice() {
+    const fruit = getFruit();
+    return fruitPrices[fruit] || 45; // Default to 45 if not found
+}
+
 // ============================================================
 // LOAD FRUITS FROM GOOGLE SHEET
 // ============================================================
@@ -46,6 +52,9 @@ async function loadFruits() {
             // Clear existing options
             fruitSel.innerHTML = '<option value="">— Select a fruit —</option>';
             
+            // Clear price cache
+            fruitPrices = {};
+            
             // Add fruits that are active
             data.fruits.forEach(fruit => {
                 if (fruit.active !== false) {
@@ -53,10 +62,19 @@ async function loadFruits() {
                     option.value = fruit.name;
                     option.textContent = `${fruit.emoji || '🍎'} ${fruit.name}`;
                     fruitSel.appendChild(option);
+                    // Store price
+                    fruitPrices[fruit.name] = fruit.price || 45;
                 }
             });
             
             console.log(`✅ Loaded ${fruitSel.options.length - 1} active fruits`);
+            console.log('📊 Fruit prices:', fruitPrices);
+            
+            // Update total when fruit changes
+            if (fruitSel.options.length > 1) {
+                fruitSel.value = fruitSel.options[1].value;
+                calculateTotal();
+            }
         } else {
             console.warn('⚠️ No fruits from sheet, using fallback');
             setFallbackFruits();
@@ -69,15 +87,22 @@ async function loadFruits() {
 
 function setFallbackFruits() {
     const fallbackFruits = [
-        'Mango', 'Apple', 'Banana', 'Orange', 
-        'Strawberry', 'Grapes', 'Watermelon', 'Pineapple'
+        { name: 'Mango', price: 45 },
+        { name: 'Apple', price: 40 },
+        { name: 'Banana', price: 35 },
+        { name: 'Orange', price: 38 },
+        { name: 'Strawberry', price: 50 },
+        { name: 'Grapes', price: 42 },
+        { name: 'Watermelon', price: 55 },
+        { name: 'Pineapple', price: 48 }
     ];
     fruitSel.innerHTML = '<option value="">— Select a fruit —</option>';
-    fallbackFruits.forEach(name => {
+    fallbackFruits.forEach(fruit => {
         const option = document.createElement('option');
-        option.value = name;
-        option.textContent = name;
+        option.value = fruit.name;
+        option.textContent = fruit.name;
         fruitSel.appendChild(option);
+        fruitPrices[fruit.name] = fruit.price;
     });
 }
 
@@ -111,7 +136,12 @@ function updateUI() {
 function calculateTotal() {
     const area = getArea();
     let boxes = getBoxes();
-    if (boxes <= 0) { totalDisplay.textContent = '0 AED'; return; }
+    const pricePerBox = getFruitPrice();
+    
+    if (boxes <= 0) { 
+        totalDisplay.textContent = '0 AED'; 
+        return; 
+    }
 
     if (area === 'Dubai' && boxes < 2) {
         boxes = 2;
@@ -120,7 +150,7 @@ function calculateTotal() {
         boxes = 3;
         boxesInp.value = 3;
     }
-    const total = boxes * PRICE_PER_BOX;
+    const total = boxes * pricePerBox;
     totalDisplay.textContent = total + ' AED';
     return total;
 }
@@ -158,10 +188,11 @@ function submitOrder() {
     const area = getArea();
     const fruit = getFruit();
     const boxes = getBoxes();
-    const total = boxes * PRICE_PER_BOX;
+    const pricePerBox = getFruitPrice();
+    const total = boxes * pricePerBox;
     const instructions = instructionsInp.value.trim() || '(none)';
 
-    console.log('Order data:', { name, phone, address, area, fruit, boxes, total, instructions });
+    console.log('Order data:', { name, phone, address, area, fruit, pricePerBox, boxes, total, instructions });
 
     // Update invoice fields
     document.getElementById("invName").innerText = name;
@@ -189,7 +220,8 @@ function submitOrder() {
             <div class="col-5 order-summary-label">Address</div><div class="col-7">${address}</div>
             <div class="col-5 order-summary-label">Area</div><div class="col-7">${area} ${areaMsg}</div>
             <div class="col-5 order-summary-label">Fruit</div><div class="col-7">${fruit}</div>
-            <div class="col-5 order-summary-label">Boxes</div><div class="col-7">${boxes} (${PRICE_PER_BOX} AED/box)</div>
+            <div class="col-5 order-summary-label">Price/Box</div><div class="col-7">${pricePerBox} AED</div>
+            <div class="col-5 order-summary-label">Boxes</div><div class="col-7">${boxes}</div>
             <div class="col-5 order-summary-label fw-bold">Total</div><div class="col-7 fw-bold">${total} AED</div>
             <div class="col-5 order-summary-label">Instructions</div><div class="col-7 text-break">${instructions}</div>
         </div>
@@ -203,6 +235,7 @@ function submitOrder() {
         address: address,
         state: area,
         fruit: fruit,
+        pricePerBox: pricePerBox,
         boxes: boxes,
         total: total,
         instructions: instructions,
@@ -235,7 +268,7 @@ function submitOrder() {
 }
 
 // ============================================================
-// DOWNLOAD PDF - PROFESSIONAL INVOICE WITH UNIQUE DESIGN
+// DOWNLOAD PDF - FIXED ENCODING ISSUE
 // ============================================================
 function downloadPDF() {
     // Get all form values
@@ -245,7 +278,8 @@ function downloadPDF() {
     const area = getArea() || "Not selected";
     const fruit = getFruit() || "Not selected";
     const boxes = getBoxes() || 0;
-    const total = boxes * PRICE_PER_BOX;
+    const pricePerBox = getFruitPrice();
+    const total = boxes * pricePerBox;
     const instructions = instructionsInp.value.trim() || "None";
     
     // Get current date and time
@@ -389,7 +423,7 @@ function downloadPDF() {
     doc.text(`Fresh ${fruit} Boxes`, 25, yPos);
     doc.text(fruit, 85, yPos);
     doc.text(`${boxes}`, 128, yPos);
-    doc.text(`45 AED`, 148, yPos);
+    doc.text(`${pricePerBox} AED`, 148, yPos);
     doc.text(`${total} AED`, 170, yPos);
     yPos += 10;
 
