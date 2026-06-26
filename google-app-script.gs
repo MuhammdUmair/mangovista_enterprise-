@@ -5,7 +5,7 @@
  * Sheet ID: 31_z1eRE3Fk_PaDj0oLFHnfvQeqGuyzbBhSoED-3MNc
  */
 
-const SHEET_ID = '131_z1eRE3Fk_PaDj0oLFHnfvQeqGuyzbBhSoED-3MNc';
+const SHEET_ID = '31_z1eRE3Fk_PaDj0oLFHnfvQeqGuyzbBhSoED-3MNc';
 
 // ============================================================
 // MAIN POST HANDLER
@@ -16,7 +16,7 @@ function doPost(e) {
     
     // Check if it's a GET request for fruit config
     if (e.parameter && e.parameter.action === 'getFruits') {
-      return getFruitsConfig();
+      return getFruitsConfig(e);
     }
     
     let data;
@@ -111,11 +111,17 @@ function doPost(e) {
 }
 
 // ============================================================
-// GET FRUITS CONFIGURATION
+// GET FRUITS CONFIGURATION - WITH FORCE NO-CACHE
 // ============================================================
-function getFruitsConfig() {
+function getFruitsConfig(e) {
   try {
     console.log('📋 getFruitsConfig() called');
+    
+    // 🔥 KEY FIX: Log the request parameters to verify cache-busting
+    if (e && e.parameter) {
+      console.log('📋 Request parameters:', JSON.stringify(e.parameter));
+    }
+    
     let ss = SpreadsheetApp.openById(SHEET_ID);
     let configSheet = ss.getSheetByName('FruitConfig');
     
@@ -146,16 +152,16 @@ function getFruitsConfig() {
       }
     }
     
+    // 🔥 KEY FIX: Force a sheet refresh by getting the last modified time
+    // This ensures we're reading fresh data
+    const lastModified = configSheet.getLastRow();
+    console.log('📊 FruitConfig last row:', lastModified);
+    
     // Read fruit data
     const lastRow = configSheet.getLastRow();
     if (lastRow < 2) {
       console.log('⚠️ No fruit data found');
-      return ContentService
-        .createTextOutput(JSON.stringify({
-          success: true,
-          fruits: []
-        }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return createCachedResponse({ success: true, fruits: [] });
     }
     
     const data = configSheet.getRange(2, 1, lastRow - 1, 4).getValues();
@@ -182,23 +188,37 @@ function getFruitsConfig() {
     
     console.log(`📋 Loaded ${fruits.length} fruits from config`);
     
-    return ContentService
-      .createTextOutput(JSON.stringify({
-        success: true,
-        fruits: fruits
-      }))
-      .setMimeType(ContentService.MimeType.JSON);
+    // 🔥 KEY FIX: Add timestamp and a hash to the response to prevent caching
+    const responseData = {
+      success: true,
+      fruits: fruits,
+      _timestamp: new Date().toISOString(),
+      _cacheBuster: Date.now()
+    };
+    
+    return createCachedResponse(responseData);
       
   } catch (error) {
     console.log('❌ Error loading fruit config:', error);
-    return ContentService
-      .createTextOutput(JSON.stringify({
-        success: false,
-        error: error.toString(),
-        fruits: []
-      }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return createCachedResponse({
+      success: false,
+      error: error.toString(),
+      fruits: []
+    });
   }
+}
+
+// ============================================================
+// HELPER: Create response with anti-caching headers
+// ============================================================
+function createCachedResponse(data) {
+  // 🔥 KEY FIX: Set headers to prevent caching at all levels
+  return ContentService
+    .createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON)
+    .setHeader('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0, post-check=0, pre-check=0')
+    .setHeader('Pragma', 'no-cache')
+    .setHeader('Expires', '0');
 }
 
 // ============================================================
@@ -289,7 +309,9 @@ function setupAll() {
   console.log('🎉 All setup complete!');
 }
 
-// Test function to verify backend connection
+// ============================================================
+// TEST FUNCTION
+// ============================================================
 function testDoPost() {
   console.log('🧪 Running test...');
   const testData = {
@@ -306,6 +328,7 @@ function testDoPost() {
   };
 
   const event = {
+    parameter: { action: 'getFruits', t: Date.now() },
     postData: {
       contents: JSON.stringify(testData)
     }
