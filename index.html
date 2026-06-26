@@ -152,7 +152,6 @@
             width: 1.2rem;
             height: 1.2rem;
         }
-        /* Hidden invoice div (kept for compatibility) */
         #invoice {
             display: none;
         }
@@ -219,7 +218,7 @@
 
                 <!-- Buttons -->
                 <div class="d-flex flex-wrap gap-3 mt-2">
-                    <button type="button" class="btn btn-mango flex-fill" id="submitBtn" onclick="generateInvoice()">
+                    <button type="button" class="btn btn-mango flex-fill" id="submitBtn">
                         <i class="bi bi-check2-circle me-1"></i> Place Order
                     </button>
                     <button type="button" class="btn btn-outline-mango flex-fill" onclick="downloadPDF()">
@@ -295,12 +294,11 @@
         function getArea() { return areaSel.value; }
         function getBoxes() { return parseInt(boxesInp.value) || 0; }
 
-        // Update delivery message & enforce minimums, auto-calculate total
+        // Update delivery message & enforce minimums
         function updateUI() {
             const area = getArea();
             let boxes = getBoxes();
 
-            // Delivery message
             if (area === 'Dubai') {
                 deliveryMsg.style.display = 'block';
                 deliveryText.textContent = 'Dubai: delivery within 1 day.';
@@ -341,7 +339,7 @@
             return total;
         }
 
-        // Validate all required fields (instructions are optional)
+        // Validate all required fields
         function validateForm() {
             const name = nameInp.value.trim();
             const phone = phoneInp.value.trim();
@@ -359,8 +357,8 @@
             return true;
         }
 
-        // ----- Generate invoice and submit to Google Sheet -----
-        function generateInvoice() {
+        // ----- Submit order to Google Sheet -----
+        function submitOrder() {
             if (!validateForm()) return;
 
             const name = nameInp.value.trim();
@@ -371,32 +369,26 @@
             const total = boxes * PRICE_PER_BOX;
             const instructions = instructionsInp.value.trim() || '(none)';
 
-            // Update invoice preview fields
+            // Update invoice fields
             document.getElementById("invName").innerText = name;
             document.getElementById("invPhone").innerText = phone;
             document.getElementById("invAddress").innerText = address;
             document.getElementById("invArea").innerText = area;
             document.getElementById("invBoxes").innerText = boxes;
             document.getElementById("invTotal").innerText = total + " AED";
+            document.getElementById("invDelivery").innerText = area === "Dubai" ? 
+                "Orders within Dubai will be delivered within 1 day." : 
+                "Orders outside Dubai will be delivered only on weekends.";
 
-            if (area === "Dubai") {
-                document.getElementById("invDelivery").innerText = "Orders within Dubai will be delivered within 1 day.";
-            } else {
-                document.getElementById("invDelivery").innerText = "Orders outside Dubai will be delivered only on weekends.";
-            }
-
-            // Show thank you message
-            if (thankYouDiv && thankNameSpan) {
-                thankNameSpan.innerText = name;
-                thankYouDiv.style.display = "block";
-                thankYouDiv.scrollIntoView({ behavior: "smooth", block: "center" });
-            }
+            // Show thank you
+            thankNameSpan.innerText = name;
+            thankYouDiv.style.display = 'block';
+            thankYouDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
             // Show invoice preview
             showInvoicePreview(name, phone, address, area, boxes, total, instructions);
 
             // --- Submit to Google Sheet ---
-            // UPDATED: Your actual deployment URL
             const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxAhe_TSf5FL5-I3Dzvdb4K4td-LMEVdLJfmWMkY0XU5ELjcMl6oEEpQUXMzC5uWMPM/exec';
 
             const payload = {
@@ -410,11 +402,9 @@
                 timestamp: new Date().toISOString()
             };
 
-            // Show loading state on submit button
-            if (submitBtn) {
-                submitBtn.disabled = true;
-                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span> Submitting...';
-            }
+            // Show loading state
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span> Submitting...';
 
             fetch(SCRIPT_URL, {
                 method: "POST",
@@ -424,18 +414,14 @@
             })
             .then(() => {
                 console.log("Order submitted successfully.");
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Place Order';
-                }
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Place Order';
             })
             .catch((err) => {
                 alert("⚠️ There was a problem submitting your order. Please try again or contact us.");
                 console.error("Submit error:", err);
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Place Order';
-                }
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Place Order';
             });
         }
 
@@ -455,7 +441,7 @@
             invoicePreview.style.display = 'block';
         }
 
-        // ----- Download PDF invoice (using jsPDF) -----
+        // ----- Download PDF -----
         function downloadPDF() {
             const name = nameInp.value.trim() || "Customer";
             const phone = phoneInp.value.trim() || "-";
@@ -506,12 +492,15 @@
             calculateTotal();
         });
 
+        // Attach submit button event
+        submitBtn.addEventListener('click', submitOrder);
+
         window.addEventListener('DOMContentLoaded', function() {
             updateUI();
         });
 
         // Expose functions globally
-        window.generateInvoice = generateInvoice;
+        window.submitOrder = submitOrder;
         window.downloadPDF = downloadPDF;
         window.calculateTotal = calculateTotal;
         window.updateUI = updateUI;
