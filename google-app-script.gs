@@ -1,31 +1,39 @@
 /**
  * Google Apps Script - Mango Vista Order Handler
- * This script receives orders from the web form and saves them to Google Sheets
+ * 
+ * DEPLOYMENT INFO:
+ * Web App URL: https://script.google.com/macros/s/AKfycbxt6JQBzNskvbKtFYSKnpUbzxBmtR1_OhSnSIkgbwAfXYwnlErs5fx9Qa8hL7-j98U82Q/exec
+ * Deployment ID: AKfycbxt6JQBzNskvbKtFYSKnpUbzxBmtR1_OhSnSIkgbwAfXYwnlErs5fx9Qa8hL7-j98U82Q
  */
 
-// Configuration - CORRECT SHEET ID (extracted from your URL)
+// YOUR GOOGLE SHEET ID (extracted from your sheet URL)
 const SHEET_ID = '1GYDIpYphGIMduA-qtyM-WrotDhyKC69TWgKEYS2ELfI';
 
 function doPost(e) {
   try {
+    console.log('📥 doPost() called');
+    
     // Parse the incoming data
     let data;
     if (e.postData && e.postData.contents) {
       data = JSON.parse(e.postData.contents);
+      console.log('📋 Parsed JSON data:', JSON.stringify(data));
     } else if (e.parameter) {
       data = e.parameter;
+      console.log('📋 Parameter data:', JSON.stringify(data));
     } else {
       throw new Error('No data received');
     }
 
-    // Get the spreadsheet using the correct ID
+    // Get the spreadsheet
     let ss = SpreadsheetApp.openById(SHEET_ID);
+    console.log('📊 Spreadsheet opened successfully');
 
     // Get or create the Orders sheet
     let sheet = ss.getSheetByName('Orders');
     if (!sheet) {
+      console.log('📝 Orders sheet not found, creating new one...');
       sheet = ss.insertSheet('Orders');
-      // Add headers
       const headers = [
         'Timestamp',
         'Customer Name',
@@ -39,30 +47,30 @@ function doPost(e) {
       ];
       sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
       sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+      console.log('✅ Headers created');
     }
 
     // Prepare row data
     const timestamp = new Date();
     const orderStatus = 'Pending';
 
-    // Log the received data for debugging
-    Logger.log(`Received order: ${JSON.stringify(data)}`);
-
-    // Create row with all fields
     const row = [
-      timestamp,                          // Timestamp
-      data.name || data.customerName || '', // Customer Name
-      data.phone || '',                   // Phone Number
-      data.address || '',                 // Address
-      data.state || data.area || '',      // Area
-      data.boxes || 0,                    // Number of Boxes
-      data.total || 0,                    // Total Amount
-      data.instructions || '(none)',      // Special Instructions
-      orderStatus                         // Order Status
+      timestamp,
+      data.name || data.customerName || '',
+      data.phone || '',
+      data.address || '',
+      data.state || data.area || '',
+      data.boxes || 0,
+      data.total || 0,
+      data.instructions || '(none)',
+      orderStatus
     ];
+
+    console.log('📝 Appending row:', JSON.stringify(row));
 
     // Append row to sheet
     sheet.appendRow(row);
+    console.log('✅ Row appended, new row number:', sheet.getLastRow());
 
     // Return success response
     return ContentService
@@ -75,7 +83,7 @@ function doPost(e) {
       .setMimeType(ContentService.MimeType.JSON);
 
   } catch (error) {
-    Logger.log(`Error: ${error.toString()}`);
+    console.log('❌ ERROR:', error.toString());
     return ContentService
       .createTextOutput(JSON.stringify({
         success: false,
@@ -85,7 +93,52 @@ function doPost(e) {
   }
 }
 
-// Function to test the script (run this in the Apps Script editor)
+/**
+ * Run this function ONCE to set up your sheet with headers
+ * In Apps Script editor: Click "Run" → "setupSheet"
+ */
+function setupSheet() {
+  try {
+    console.log('🔧 Running setupSheet()...');
+    let ss = SpreadsheetApp.openById(SHEET_ID);
+    console.log('📊 Spreadsheet opened:', ss.getUrl());
+    
+    let sheet = ss.getSheetByName('Orders');
+    if (!sheet) {
+      sheet = ss.insertSheet('Orders');
+      console.log('📝 Created new Orders sheet');
+    }
+
+    const headers = [
+      'Timestamp',
+      'Customer Name',
+      'Phone Number',
+      'Address',
+      'Area',
+      'Number of Boxes',
+      'Total Amount (AED)',
+      'Special Instructions',
+      'Order Status'
+    ];
+
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+    sheet.setFrozenRows(1);
+    sheet.getRange('A:A').setNumberFormat('yyyy-mm-dd hh:mm:ss');
+
+    console.log('✅ Sheet setup complete!');
+    console.log('🔗 Spreadsheet URL: ' + ss.getUrl());
+    return ss.getUrl();
+  } catch (error) {
+    console.log('❌ setupSheet ERROR:', error.toString());
+    throw error;
+  }
+}
+
+/**
+ * Test function - run this to verify your script works
+ * In Apps Script editor: Click "Run" → "testDoPost"
+ */
 function testDoPost() {
   const testData = {
     name: 'Test Customer',
@@ -94,7 +147,8 @@ function testDoPost() {
     state: 'Dubai',
     boxes: 2,
     total: 90,
-    instructions: 'Test instruction - leave with security'
+    instructions: 'Test instruction - leave with security',
+    timestamp: new Date().toISOString()
   };
 
   const event = {
@@ -103,38 +157,25 @@ function testDoPost() {
     }
   };
 
-  const result = doPost(event);
-  Logger.log(`Test result: ${result.getContent()}`);
+  try {
+    const result = doPost(event);
+    console.log('✅ Test result:', result.getContent());
+    return result.getContent();
+  } catch (error) {
+    console.log('❌ Test ERROR:', error.toString());
+    return 'Error: ' + error.toString();
+  }
 }
 
-// Function to set up the sheet with headers (run this once)
-function setupSheet() {
-  let ss = SpreadsheetApp.openById(SHEET_ID);
-  let sheet = ss.getSheetByName('Orders');
-  
-  if (!sheet) {
-    sheet = ss.insertSheet('Orders');
+/**
+ * Helper function to get the spreadsheet URL
+ */
+function getSpreadsheetUrl() {
+  try {
+    let ss = SpreadsheetApp.openById(SHEET_ID);
+    return ss.getUrl();
+  } catch (error) {
+    console.log('❌ Error getting spreadsheet URL:', error.toString());
+    return null;
   }
-
-  const headers = [
-    'Timestamp',
-    'Customer Name',
-    'Phone Number',
-    'Address',
-    'Area',
-    'Number of Boxes',
-    'Total Amount (AED)',
-    'Special Instructions',
-    'Order Status'
-  ];
-
-  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-  sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
-  sheet.setFrozenRows(1);
-
-  // Format the Timestamp column
-  sheet.getRange('A:A').setNumberFormat('yyyy-mm-dd hh:mm:ss');
-
-  Logger.log(`Sheet setup complete. Spreadsheet URL: ${ss.getUrl()}`);
-  return ss.getUrl();
 }
