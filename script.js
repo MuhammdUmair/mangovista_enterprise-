@@ -79,7 +79,9 @@ async function loadFruits() {
         
         const response = await fetch(url, {
             method: 'GET',
+            mode: 'cors', // Explicitly set CORS mode
             headers: {
+                'Content-Type': 'application/json',
                 'Cache-Control': 'no-cache, no-store, must-revalidate',
                 'Pragma': 'no-cache'
             }
@@ -352,15 +354,16 @@ function submitOrder() {
 
     fetch(SCRIPT_URL, {
         method: "POST",
-        mode: "no-cors",
+        mode: "cors",
         headers: { 
             "Content-Type": "application/json",
             "Cache-Control": "no-cache"
         },
         body: JSON.stringify(payload)
     })
-    .then(() => {
-        console.log("✅ Order submitted successfully.");
+    .then(response => response.json())
+    .then(data => {
+        console.log("✅ Order submitted successfully:", data);
         lastOrderTime = Date.now();
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Place Order';
