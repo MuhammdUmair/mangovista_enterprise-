@@ -161,9 +161,6 @@
             text-align: center;
             margin-top: 10px;
         }
-        .fruit-emoji {
-            font-size: 1.2rem;
-        }
     </style>
 </head>
 <body>
@@ -214,12 +211,12 @@
                     <div class="form-text">Fruits availability is managed from Google Sheet</div>
                 </div>
 
-                <!-- Boxes + price (fixed 45 AED) – auto-update -->
+                <!-- Boxes + price – auto-update -->
                 <div class="row g-3 mb-3 align-items-end">
                     <div class="col-7">
                         <label class="form-label">Number of Boxes <span class="required-star">*</span></label>
                         <input class="form-control" type="number" id="boxes" min="1" value="1" required style="font-size: 1.1rem;">
-                        <div class="form-text">45 AED per box · minimums: Dubai 2, Sharjah 3</div>
+                        <div class="form-text" id="priceDisplay">Price: 45 AED per box · minimums: Dubai 2, Sharjah 3</div>
                     </div>
                     <div class="col-5">
                         <label class="form-label">Total Amount</label>
