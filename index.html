@@ -155,6 +155,12 @@
         #invoice {
             display: none;
         }
+        .thankyou {
+            color: green;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -272,7 +278,15 @@
     </a>
 
     <script>
-        // ----- DOM refs -----
+        // ============================================================
+        // CONFIGURATION - UPDATED WITH YOUR NEW DEPLOYMENT URL
+        // ============================================================
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxt6JQBzNskvbKtFYSKnpUbzxBmtR1_OhSnSIkgbwAfXYwnlErs5fx9Qa8hL7-j98U82Q/exec';
+        const PRICE_PER_BOX = 45;
+
+        // ============================================================
+        // DOM REFERENCES
+        // ============================================================
         const nameInp = document.getElementById('name');
         const phoneInp = document.getElementById('phone');
         const addressInp = document.getElementById('address');
@@ -288,13 +302,15 @@
         const invoiceContent = document.getElementById('invoiceContent');
         const submitBtn = document.getElementById('submitBtn');
 
-        const PRICE_PER_BOX = 45;
-
-        // ----- helpers -----
+        // ============================================================
+        // HELPER FUNCTIONS
+        // ============================================================
         function getArea() { return areaSel.value; }
         function getBoxes() { return parseInt(boxesInp.value) || 0; }
 
-        // Update delivery message & enforce minimums
+        // ============================================================
+        // UPDATE UI - Area & Boxes
+        // ============================================================
         function updateUI() {
             const area = getArea();
             let boxes = getBoxes();
@@ -339,7 +355,9 @@
             return total;
         }
 
-        // Validate all required fields
+        // ============================================================
+        // VALIDATE FORM
+        // ============================================================
         function validateForm() {
             const name = nameInp.value.trim();
             const phone = phoneInp.value.trim();
@@ -357,9 +375,16 @@
             return true;
         }
 
-        // ----- Submit order to Google Sheet -----
+        // ============================================================
+        // SUBMIT ORDER TO GOOGLE SHEET
+        // ============================================================
         function submitOrder() {
-            if (!validateForm()) return;
+            console.log('submitOrder() called');
+            
+            if (!validateForm()) {
+                console.log('Form validation failed');
+                return;
+            }
 
             const name = nameInp.value.trim();
             const phone = phoneInp.value.trim();
@@ -368,6 +393,8 @@
             const boxes = getBoxes();
             const total = boxes * PRICE_PER_BOX;
             const instructions = instructionsInp.value.trim() || '(none)';
+
+            console.log('Order data:', { name, phone, address, area, boxes, total, instructions });
 
             // Update invoice fields
             document.getElementById("invName").innerText = name;
@@ -386,46 +413,6 @@
             thankYouDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
             // Show invoice preview
-            showInvoicePreview(name, phone, address, area, boxes, total, instructions);
-
-            // --- Submit to Google Sheet ---
-            const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxAhe_TSf5FL5-I3Dzvdb4K4td-LMEVdLJfmWMkY0XU5ELjcMl6oEEpQUXMzC5uWMPM/exec';
-
-            const payload = {
-                name: name,
-                phone: phone,
-                address: address,
-                state: area,
-                boxes: boxes,
-                total: total,
-                instructions: instructions,
-                timestamp: new Date().toISOString()
-            };
-
-            // Show loading state
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span> Submitting...';
-
-            fetch(SCRIPT_URL, {
-                method: "POST",
-                mode: "no-cors",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            })
-            .then(() => {
-                console.log("Order submitted successfully.");
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Place Order';
-            })
-            .catch((err) => {
-                alert("⚠️ There was a problem submitting your order. Please try again or contact us.");
-                console.error("Submit error:", err);
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Place Order';
-            });
-        }
-
-        function showInvoicePreview(name, phone, address, area, boxes, total, instructions) {
             const areaMsg = area === 'Dubai' ? '✅ within 1 day' : '📆 weekend only';
             invoiceContent.innerHTML = `
                 <div class="row g-2 small">
@@ -439,9 +426,48 @@
                 </div>
             `;
             invoicePreview.style.display = 'block';
+
+            // --- Submit to Google Sheet ---
+            const payload = {
+                name: name,
+                phone: phone,
+                address: address,
+                state: area,
+                boxes: boxes,
+                total: total,
+                instructions: instructions,
+                timestamp: new Date().toISOString()
+            };
+
+            console.log('Sending payload to:', SCRIPT_URL);
+            console.log('Payload:', payload);
+
+            // Show loading state
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span> Submitting...';
+
+            fetch(SCRIPT_URL, {
+                method: "POST",
+                mode: "no-cors",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            })
+            .then(() => {
+                console.log("✅ Order submitted successfully (no-cors response).");
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Place Order';
+            })
+            .catch((err) => {
+                console.error("❌ Submit error:", err);
+                alert("⚠️ There was a problem submitting your order. Please try again or contact us.\n\nError: " + err.message);
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Place Order';
+            });
         }
 
-        // ----- Download PDF -----
+        // ============================================================
+        // DOWNLOAD PDF
+        // ============================================================
         function downloadPDF() {
             const name = nameInp.value.trim() || "Customer";
             const phone = phoneInp.value.trim() || "-";
@@ -477,8 +503,11 @@
             doc.save("MangoVista_Order.pdf");
         }
 
-        // ----- Event listeners -----
+        // ============================================================
+        // EVENT LISTENERS
+        // ============================================================
         areaSel.addEventListener('change', updateUI);
+        
         boxesInp.addEventListener('input', function() {
             const area = getArea();
             let val = parseInt(this.value) || 0;
@@ -492,18 +521,21 @@
             calculateTotal();
         });
 
-        // Attach submit button event
         submitBtn.addEventListener('click', submitOrder);
 
         window.addEventListener('DOMContentLoaded', function() {
+            console.log('✅ DOM loaded, initializing...');
+            console.log('📡 SCRIPT_URL:', SCRIPT_URL);
             updateUI();
+            console.log('✅ Ready!');
         });
 
-        // Expose functions globally
+        // Expose functions globally for debugging
         window.submitOrder = submitOrder;
         window.downloadPDF = downloadPDF;
         window.calculateTotal = calculateTotal;
         window.updateUI = updateUI;
+        window.SCRIPT_URL = SCRIPT_URL;
     </script>
 </body>
 </html>
