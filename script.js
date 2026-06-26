@@ -9,7 +9,7 @@
 // ============================================================
 // CONFIGURATION
 // ============================================================
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx2ipkS3pI512EC3Q2AmUHciZENMFF0Xa3R5MWpP64dvk2pKeqUuZ1HWel7WKoM_WcX/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwg63U9lTJ4wyxwobmyFoJstgfloA7o7g-BmPENNRtxcqlbodfJFdG8rkyde-HGqhc2/exec';
 const FRUIT_NAME = 'Mango (Sindhri)';
 const FRUIT_PRICE = 45;
 const MAX_BOXES = 5; // Maximum order limit
