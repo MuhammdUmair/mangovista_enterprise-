@@ -1,11 +1,15 @@
 /**
  * Being Healthy Order Form - JavaScript
- * Web App URL: https://script.google.com/macros/s/AKfycbxt6JQBzNskvbKtFYSKnpUbzxBmtR1_OhSnSIkgbwAfXYwnlErs5fx9Qa8hL7-j98U82Q/exec
+ * 
+ * DEPLOYMENT INFO:
+ * Web App URL: https://script.google.com/macros/s/AKfycbyRRZr640zMiP0tdDbwPS8mHEG5GRBKlYs69YvhMoFh6byhcMRUED9TwFzjtyYSp9IP/exec
+ * Deployment ID: AKfycbyRRZr640zMiP0tdDbwPS8mHEG5GRBKlYs69YvhMoFh6byhcMRUED9TwFzjtyYSp9IP
+ * Sheet ID: 131_z1eRE3Fk_PaDj0oLFHnfvQeqGuyzbBhSoED-3MNc
  */
 
-// CONFIGURATION
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxt6JQBzNskvbKtFYSKnpUbzxBmtR1_OhSnSIkgbwAfXYwnlErs5fx9Qa8hL7-j98U82Q/exec';
-const FRUIT_CONFIG_URL = 'https://script.google.com/macros/s/AKfycbxt6JQBzNskvbKtFYSKnpUbzxBmtR1_OhSnSIkgbwAfXYwnlErs5fx9Qa8hL7-j98U82Q/exec?action=getFruits';
+// CONFIGURATION - UPDATED WITH YOUR NEW SHEET
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyRRZr640zMiP0tdDbwPS8mHEG5GRBKlYs69YvhMoFh6byhcMRUED9TwFzjtyYSp9IP/exec';
+const FRUIT_CONFIG_URL = SCRIPT_URL + '?action=getFruits';
 const PRICE_PER_BOX = 45;
 
 // DOM REFERENCES
@@ -38,7 +42,7 @@ async function loadFruits() {
         const response = await fetch(FRUIT_CONFIG_URL);
         const data = await response.json();
         
-        if (data.success && data.fruits) {
+        if (data.success && data.fruits && data.fruits.length > 0) {
             // Clear existing options
             fruitSel.innerHTML = '<option value="">— Select a fruit —</option>';
             
@@ -54,8 +58,7 @@ async function loadFruits() {
             
             console.log(`✅ Loaded ${fruitSel.options.length - 1} active fruits`);
         } else {
-            // Fallback fruits if sheet fails
-            console.warn('⚠️ Using fallback fruits');
+            console.warn('⚠️ No fruits from sheet, using fallback');
             setFallbackFruits();
         }
     } catch (error) {
@@ -276,12 +279,12 @@ function downloadPDF() {
     const pageWidth = 210;
     const pageHeight = 297;
 
-    // ===== BACKGROUND - Light subtle pattern =====
+    // ===== BACKGROUND =====
     doc.setFillColor(250, 248, 245);
     doc.rect(0, 0, pageWidth, pageHeight, 'F');
 
     // ===== TOP DECORATIVE BORDER =====
-    doc.setFillColor(46, 125, 50); // Green
+    doc.setFillColor(46, 125, 50);
     doc.rect(0, 0, pageWidth, 8, 'F');
     
     // ===== HEADER SECTION =====
@@ -374,12 +377,11 @@ function downloadPDF() {
     doc.text("Total", 175, yPos + 1);
     yPos += 8;
 
-    // Table row with alternating colors
+    // Table row
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
     doc.setTextColor(50);
     
-    // Row 1 - Fruit Boxes
     if (yPos % 2 === 0) {
         doc.setFillColor(248, 246, 243);
         doc.rect(20, yPos - 4, 170, 8, 'F');
@@ -440,12 +442,10 @@ function downloadPDF() {
     }
 
     // ===== FOOTER =====
-    // Decorative line
     doc.setDrawColor(46, 125, 50);
     doc.line(20, yPos, 190, yPos);
     yPos += 8;
 
-    // Thank you message
     doc.setFontSize(12);
     doc.setTextColor(46, 125, 50);
     doc.setFont('helvetica', 'bold');
@@ -458,7 +458,7 @@ function downloadPDF() {
     doc.text("We appreciate your business and look forward to serving you again.", 20, yPos);
     yPos += 8;
 
-    // Contact footer with icons
+    // Contact footer
     doc.setFillColor(245, 242, 238);
     doc.rect(0, pageHeight - 25, pageWidth, 25, 'F');
     doc.setFontSize(9);
@@ -498,7 +498,7 @@ submitBtn.addEventListener('click', submitOrder);
 window.addEventListener('DOMContentLoaded', function() {
     console.log('✅ DOM loaded, initializing...');
     console.log('📡 SCRIPT_URL:', SCRIPT_URL);
-    loadFruits(); // Load fruits from sheet
+    loadFruits();
     updateUI();
     console.log('✅ Ready!');
 });
