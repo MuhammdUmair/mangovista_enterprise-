@@ -11,7 +11,7 @@
 // ============================================================
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx2ipkS3pI512EC3Q2AmUHciZENMFF0Xa3R5MWpP64dvk2pKeqUuZ1HWel7WKoM_WcX/exec';
 const ORDER_COOLDOWN = 3600000; // 1 hour in milliseconds
-const REFRESH_INTERVAL = 5000; // 5 seconds
+const REFRESH_INTERVAL = 60000; // 1 minute
 
 let fruitPrices = {};
 let lastOrderTime = 0;
@@ -419,7 +419,6 @@ function downloadPDF() {
         return;
     }
     if (!getFruit() || getFruit() === '— Loading fruits...') {
-        alert("Please select a fruit.");
         return;
     }
 
