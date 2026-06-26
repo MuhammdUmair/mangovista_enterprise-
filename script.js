@@ -173,39 +173,188 @@ function submitOrder() {
     });
 }
 
+// ============================================================
+// DOWNLOAD PDF - IMPROVED VERSION WITH ALL ORDER DETAILS
+// ============================================================
 function downloadPDF() {
-    const name = nameInp.value.trim() || "Customer";
-    const phone = phoneInp.value.trim() || "-";
-    const address = addressInp.value.trim() || "-";
-    const area = getArea() || "-";
+    // Get all form values
+    const name = nameInp.value.trim() || "Not provided";
+    const phone = phoneInp.value.trim() || "Not provided";
+    const address = addressInp.value.trim() || "Not provided";
+    const area = getArea() || "Not selected";
     const boxes = getBoxes() || 0;
     const total = boxes * PRICE_PER_BOX;
-    const instructions = instructionsInp.value.trim() || "(none)";
+    const instructions = instructionsInp.value.trim() || "None";
+    
+    // Get current date and time for the invoice
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
+    const timeStr = now.toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
 
+    // Validation
     if (boxes < 1) {
-        alert("Please add at least 1 box before downloading the bill.");
+        alert("⚠️ Please add at least 1 box before downloading the bill.");
         return;
     }
     if (!getArea()) {
-        alert("Please select your area first.");
+        alert("⚠️ Please select your area first.");
         return;
     }
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-    doc.setFontSize(20);
-    doc.text("🥭 Mango Vista · Invoice", 20, 30);
+
+    // ===== HEADER =====
+    doc.setFontSize(24);
+    doc.setTextColor(163, 92, 44); // Mango color
+    doc.text("🥭 Mango Vista", 20, 30);
+    
+    doc.setFontSize(14);
+    doc.setTextColor(100);
+    doc.text("Order Invoice", 20, 42);
+    
+    doc.setDrawColor(200, 180, 160);
+    doc.line(20, 48, 190, 48);
+
+    // ===== ORDER DETAILS =====
     doc.setFontSize(12);
-    doc.text(`Name: ${name}`, 20, 50);
-    doc.text(`Phone: ${phone}`, 20, 60);
-    doc.text(`Address: ${address}`, 20, 70);
-    doc.text(`Area: ${area}`, 20, 80);
-    doc.text(`Boxes: ${boxes} (${PRICE_PER_BOX} AED/box)`, 20, 90);
-    doc.text(`Total: ${total} AED`, 20, 100);
-    doc.text(`Instructions: ${instructions}`, 20, 110);
-    doc.text("Thank you for choosing Mango Vista!", 20, 140);
-    doc.text("📞 +971 52 231 7016", 20, 155);
-    doc.save("MangoVista_Order.pdf");
+    doc.setTextColor(50);
+    
+    // Invoice number and date
+    const invoiceNum = 'MV-' + now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0') + '-' + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+    doc.text(`Invoice #: ${invoiceNum}`, 140, 30);
+    doc.text(`Date: ${dateStr}`, 140, 40);
+    doc.text(`Time: ${timeStr}`, 140, 48);
+
+    // Customer Information Section
+    doc.setFontSize(13);
+    doc.setTextColor(163, 92, 44);
+    doc.text("📋 CUSTOMER INFORMATION", 20, 65);
+    
+    doc.setFontSize(11);
+    doc.setTextColor(50);
+    doc.setDrawColor(220, 210, 200);
+    doc.line(20, 70, 190, 70);
+    
+    const customerData = [
+        ["Full Name", name],
+        ["Phone Number", phone],
+        ["Address", address],
+        ["Area", area]
+    ];
+    
+    let yPos = 80;
+    customerData.forEach(([label, value]) => {
+        doc.setTextColor(100);
+        doc.text(`${label}:`, 20, yPos);
+        doc.setTextColor(30);
+        // Handle long text wrapping for address
+        if (label === "Address" && value.length > 30) {
+            const lines = doc.splitTextToSize(value, 120);
+            doc.text(lines, 70, yPos);
+            yPos += (lines.length * 6);
+        } else {
+            doc.text(value, 70, yPos);
+            yPos += 7;
+        }
+    });
+
+    // ===== ORDER SUMMARY =====
+    yPos += 10;
+    doc.setFontSize(13);
+    doc.setTextColor(163, 92, 44);
+    doc.text("🛒 ORDER SUMMARY", 20, yPos);
+    yPos += 5;
+    doc.setDrawColor(220, 210, 200);
+    doc.line(20, yPos, 190, yPos);
+    yPos += 8;
+
+    // Table header
+    doc.setFontSize(11);
+    doc.setTextColor(80);
+    doc.setFillColor(245, 240, 235);
+    doc.rect(20, yPos - 4, 170, 8, 'F');
+    
+    doc.text("Item", 25, yPos);
+    doc.text("Qty", 105, yPos);
+    doc.text("Price", 140, yPos);
+    doc.text("Total", 165, yPos);
+    yPos += 8;
+    
+    doc.setDrawColor(230, 220, 210);
+    doc.line(20, yPos, 190, yPos);
+    yPos += 6;
+
+    // Table row - Mango Boxes
+    doc.setTextColor(50);
+    doc.text(`Mango Boxes (45 AED each)`, 25, yPos);
+    doc.text(`${boxes}`, 110, yPos);
+    doc.text(`45 AED`, 138, yPos);
+    doc.text(`${total} AED`, 160, yPos);
+    yPos += 10;
+
+    // Total line
+    doc.setDrawColor(200, 180, 160);
+    doc.line(20, yPos, 190, yPos);
+    yPos += 6;
+    
+    doc.setFontSize(13);
+    doc.setTextColor(163, 92, 44);
+    doc.text(`TOTAL AMOUNT:`, 100, yPos);
+    doc.setFontSize(15);
+    doc.setTextColor(200, 50, 50);
+    doc.text(`${total} AED`, 160, yPos);
+    yPos += 12;
+
+    // ===== DELIVERY INFO =====
+    doc.setFontSize(11);
+    doc.setTextColor(50);
+    const deliveryMsg = area === "Dubai" ? 
+        "✅ Dubai: Delivery within 1 day" : 
+        "📦 Sharjah: Delivery on weekends only";
+    doc.text(deliveryMsg, 20, yPos);
+    yPos += 7;
+
+    // ===== SPECIAL INSTRUCTIONS =====
+    if (instructions !== "None" && instructions !== "") {
+        doc.setTextColor(80);
+        doc.text("📝 Special Instructions:", 20, yPos);
+        yPos += 6;
+        doc.setTextColor(50);
+        const instrLines = doc.splitTextToSize(instructions, 160);
+        doc.text(instrLines, 20, yPos);
+        yPos += (instrLines.length * 6) + 5;
+    }
+
+    // ===== FOOTER =====
+    yPos += 8;
+    doc.setDrawColor(200, 180, 160);
+    doc.line(20, yPos, 190, yPos);
+    yPos += 8;
+
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text("Thank you for choosing Mango Vista!", 20, yPos);
+    yPos += 6;
+    doc.text("📞 For queries: +971 52 231 7016", 20, yPos);
+    yPos += 6;
+    doc.text("📍 Dubai (1 day delivery) · Sharjah (weekend delivery)", 20, yPos);
+
+    // Add a small decorative footer
+    yPos += 8;
+    doc.setFontSize(8);
+    doc.setTextColor(180);
+    doc.text("This is a system-generated invoice. Please keep for your records.", 20, yPos);
+
+    // ===== SAVE =====
+    doc.save(`MangoVista_Invoice_${invoiceNum}.pdf`);
 }
 
 // Event listeners
