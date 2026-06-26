@@ -9,13 +9,11 @@
 // ============================================================
 // CONFIGURATION
 // ============================================================
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby5xBra9YNooUPvV-CnpvJDrCYABFHi9fXwNPr3CuvbaXtWCmji4KA9LSK90y0J5328/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyjYvFU3LH1LRk4aDc7P5DMh-KM3GFiK8rNiJc-T9hzNjA_9G1NaP2NH34uuv1SKIaj/exec';
 const ORDER_COOLDOWN = 3600000; // 1 hour in milliseconds
-const REFRESH_INTERVAL = 60000; // 1 minute
 
 let fruitPrices = {};
 let lastOrderTime = 0;
-let refreshTimer = null;
 let isLoading = false;
 
 // ============================================================
@@ -176,14 +174,6 @@ function setFallbackFruits() {
 }
 
 // ============================================================
-// REFRESH FRUITS MANUALLY
-// ============================================================
-function refreshFruits() {
-    console.log('🔄 Manual refresh triggered');
-    loadFruits();
-}
-
-// ============================================================
 // UI UPDATE FUNCTIONS
 // ============================================================
 function updateUI() {
@@ -271,7 +261,7 @@ function validateForm() {
     if (!area) { alert('Please select your area.'); areaSel.focus(); return false; }
     if (!fruit) { alert('Please select a fruit.'); fruitSel.focus(); return false; }
     if (fruit === '— Loading fruits...' || fruit === '— No fruits available —') { 
-        alert('Please wait for fruits to load or refresh.'); fruitSel.focus(); return false; 
+        alert('Please wait for fruits to load.'); fruitSel.focus(); return false; 
     }
     if (boxes < 1) { alert('Please enter number of boxes.'); boxesInp.focus(); return false; }
     if (area === 'Dubai' && boxes < 2) { alert('Dubai minimum is 2 boxes.'); boxesInp.focus(); return false; }
@@ -377,9 +367,6 @@ function submitOrder() {
         lastOrderTime = Date.now(); // Update cooldown
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i class="bi bi-check2-circle me-1"></i> Place Order';
-        
-        // Refresh fruits after order
-        setTimeout(loadFruits, 2000);
     })
     .catch((err) => {
         console.error("❌ Submit error:", err);
@@ -557,27 +544,6 @@ function downloadPDF() {
 }
 
 // ============================================================
-// START AUTO-REFRESH
-// ============================================================
-function startAutoRefresh() {
-    if (refreshTimer) {
-        clearInterval(refreshTimer);
-    }
-    refreshTimer = setInterval(function() {
-        console.log('🔄 Auto-refreshing fruits (1m interval)...');
-        loadFruits();
-    }, REFRESH_INTERVAL);
-}
-
-function stopAutoRefresh() {
-    if (refreshTimer) {
-        clearInterval(refreshTimer);
-        refreshTimer = null;
-        console.log('⏹️ Auto-refresh stopped');
-    }
-}
-
-// ============================================================
 // EVENT LISTENERS
 // ============================================================
 areaSel.addEventListener('change', updateUI);
@@ -615,22 +581,13 @@ document.addEventListener('keydown', function(e) {
 window.addEventListener('DOMContentLoaded', function() {
     console.log('✅ DOM loaded, initializing...');
     console.log('📡 SCRIPT_URL:', SCRIPT_URL);
-    console.log('🔄 Refresh interval:', REFRESH_INTERVAL / 1000 + ' seconds');
     console.log('⏱️ Order cooldown:', ORDER_COOLDOWN / 60000 + ' minutes');
     
-    // Load fruits
+    // Load fruits once on page load
     loadFruits();
     updateUI();
     
-    // Start auto-refresh
-    startAutoRefresh();
-    
     console.log('✅ Ready!');
-});
-
-// Clean up on page unload
-window.addEventListener('beforeunload', function() {
-    stopAutoRefresh();
 });
 
 // ============================================================
@@ -641,7 +598,4 @@ window.downloadPDF = downloadPDF;
 window.calculateTotal = calculateTotal;
 window.updateUI = updateUI;
 window.loadFruits = loadFruits;
-window.refreshFruits = refreshFruits;
-window.startAutoRefresh = startAutoRefresh;
-window.stopAutoRefresh = stopAutoRefresh;
 window.SCRIPT_URL = SCRIPT_URL;
