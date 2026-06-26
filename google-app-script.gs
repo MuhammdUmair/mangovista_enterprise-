@@ -8,16 +8,31 @@
 const SHEET_ID = '131_z1eRE3Fk_PaDj0oLFHnfvQeqGuyzbBhSoED-3MNc';
 
 // ============================================================
-// MAIN POST HANDLER
+// DO GET - Handles all GET requests including fruit config
+// ============================================================
+function doGet(e) {
+  console.log('📥 doGet() called');
+  
+  // Check if it's a request for fruit config
+  if (e && e.parameter && e.parameter.action === 'getFruits') {
+    return getFruitsConfig(e);
+  }
+  
+  // Default response
+  return ContentService
+    .createTextOutput(JSON.stringify({
+      success: false,
+      message: 'Invalid action. Use ?action=getFruits'
+    }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ============================================================
+// DO POST - Handles order submissions
 // ============================================================
 function doPost(e) {
   try {
     console.log('📥 doPost() called');
-    
-    // Check if it's a GET request for fruit config
-    if (e.parameter && e.parameter.action === 'getFruits') {
-      return getFruitsConfig(e);
-    }
     
     let data;
     if (e.postData && e.postData.contents) {
@@ -111,11 +126,12 @@ function doPost(e) {
 }
 
 // ============================================================
-// GET FRUITS CONFIGURATION - SIMPLIFIED & RELIABLE
+// GET FRUITS CONFIGURATION - SIMPLE & RELIABLE
 // ============================================================
 function getFruitsConfig(e) {
   try {
     console.log('📋 getFruitsConfig() called');
+    console.log('📋 Request parameters:', JSON.stringify(e ? e.parameter : {}));
     
     let ss = SpreadsheetApp.openById(SHEET_ID);
     let configSheet = ss.getSheetByName('FruitConfig');
@@ -147,7 +163,7 @@ function getFruitsConfig(e) {
       }
     }
     
-    // Read fruit data directly from sheet
+    // Read fruit data
     const lastRow = configSheet.getLastRow();
     console.log('📊 FruitConfig last row:', lastRow);
     
@@ -165,7 +181,8 @@ function getFruitsConfig(e) {
     const data = configSheet.getRange(2, 1, lastRow - 1, 4).getValues();
     const fruits = [];
     
-    data.forEach(row => {
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
       const name = row[0] || '';
       const emoji = row[1] || '🍎';
       const activeValue = String(row[2] || 'FALSE').trim().toUpperCase();
@@ -181,15 +198,16 @@ function getFruitsConfig(e) {
         });
         console.log(`📦 Fruit: ${name}, Active: ${active}, Price: ${price}`);
       }
-    });
+    }
     
     console.log(`📋 Loaded ${fruits.length} fruits from config`);
     
-    // Return response with timestamp
+    // Return success response with timestamp
     const responseData = {
       success: true,
       fruits: fruits,
-      _timestamp: new Date().toISOString()
+      _timestamp: new Date().toISOString(),
+      _count: fruits.length
     };
     
     return ContentService
@@ -202,14 +220,15 @@ function getFruitsConfig(e) {
       .createTextOutput(JSON.stringify({
         success: false,
         error: error.toString(),
-        fruits: []
+        fruits: [],
+        _timestamp: new Date().toISOString()
       }))
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
 
 // ============================================================
-// SETUP FUNCTIONS - Run these once in Apps Script
+// SETUP FUNCTIONS - Run these once
 // ============================================================
 
 // Run this to set up the Orders sheet
@@ -297,36 +316,11 @@ function setupAll() {
 }
 
 // ============================================================
-// TEST FUNCTION
+// TEST FUNCTION - Run this in Apps Script to test
 // ============================================================
-function testDoPost() {
-  console.log('🧪 Running test...');
-  const testData = {
-    name: 'Test Customer',
-    phone: '+971 50 123 4567',
-    address: 'Test Address, Dubai',
-    state: 'Dubai',
-    fruit: 'Orange',
-    pricePerBox: 38,
-    boxes: 3,
-    total: 114,
-    instructions: 'Test instruction - leave with security',
-    timestamp: new Date().toISOString()
-  };
-
-  const event = {
-    parameter: { action: 'getFruits', t: Date.now() },
-    postData: {
-      contents: JSON.stringify(testData)
-    }
-  };
-
-  try {
-    const result = doPost(event);
-    console.log('✅ Test result:', result.getContent());
-    return result.getContent();
-  } catch (error) {
-    console.log('❌ Test ERROR:', error.toString());
-    return 'Error: ' + error.toString();
-  }
+function testGetFruits() {
+  console.log('🧪 Testing getFruits...');
+  const result = getFruitsConfig({ parameter: { action: 'getFruits', t: Date.now() } });
+  console.log('📊 Result:', result.getContent());
+  return result.getContent();
 }
