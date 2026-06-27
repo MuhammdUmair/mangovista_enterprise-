@@ -161,7 +161,7 @@ function testDoPost() {
     address: 'Test Address, Dubai',
     state: 'Dubai',
     fruit: 'Mango (Sindhri)',
-    pricePerBox: 45,
+    pricePerBox: 55,
     boxes: 2,
     total: 90,
     instructions: 'Test instruction - leave with security',
