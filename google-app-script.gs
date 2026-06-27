@@ -15,7 +15,6 @@ function doPost(e) {
   try {
     console.log('📥 doPost() called');
     
-    // Check if it's a GET request for fruit config
     if (e.parameter && e.parameter.action === 'getFruits') {
       return getFruitsConfig();
     }
@@ -31,7 +30,6 @@ function doPost(e) {
       throw new Error('No data received');
     }
 
-    // Validate required fields
     const required = ['name', 'phone', 'address', 'state', 'fruit', 'boxes', 'total'];
     for (const field of required) {
       if (!data[field] && data[field] !== 0) {
@@ -39,11 +37,9 @@ function doPost(e) {
       }
     }
 
-    // Get the spreadsheet
     let ss = SpreadsheetApp.openById(SHEET_ID);
     console.log('📊 Spreadsheet opened successfully');
 
-    // Get or create the Orders sheet
     let sheet = ss.getSheetByName('Orders');
     if (!sheet) {
       console.log('📝 Orders sheet not found, creating new one...');
@@ -59,14 +55,21 @@ function doPost(e) {
         'Number of Boxes',
         'Total Amount (AED)',
         'Special Instructions',
-        'Order Status'
+        'Order Status',
+        'Invoice'  // <-- NEW COLUMN for invoice button
       ];
       sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
       sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
-      console.log('✅ Headers created');
+      
+      // Add checkbox in the Invoice column for all rows
+      const lastRow = sheet.getLastRow();
+      if (lastRow > 1) {
+        const checkboxRange = sheet.getRange(2, 12, lastRow - 1, 1);
+        checkboxRange.insertCheckboxes();
+      }
+      console.log('✅ Headers created with Invoice column');
     }
 
-    // Prepare row data
     const timestamp = new Date();
     const orderStatus = 'Pending';
 
@@ -81,16 +84,15 @@ function doPost(e) {
       data.boxes || 0,
       data.total || 0,
       data.instructions || '(none)',
-      orderStatus
+      orderStatus,
+      false  // Invoice checkbox default (unchecked)
     ];
 
     console.log('📝 Appending row:', JSON.stringify(row));
 
-    // Append row to sheet
     sheet.appendRow(row);
     console.log('✅ Row appended, new row number:', sheet.getLastRow());
 
-    // Return success response
     return ContentService
       .createTextOutput(JSON.stringify({
         success: true,
@@ -191,53 +193,47 @@ function getFruitsConfig() {
 }
 
 // ============================================================
-// GENERATE INVOICE PDF FROM SHEET ROW
+// ON EDIT - Detect Checkbox Click and Generate Invoice
 // ============================================================
-function generateInvoice() {
+function onEdit(e) {
+  const range = e.range;
+  const sheet = range.getSheet();
+  const sheetName = sheet.getName();
+  
+  // Only process Orders sheet
+  if (sheetName !== 'Orders') return;
+  
+  const row = range.getRow();
+  const col = range.getColumn();
+  
+  // Column L (12) is the Invoice column
+  if (col !== 12) return;
+  if (row < 2) return; // Skip header row
+  
+  // Check if checkbox was checked (TRUE)
+  const value = range.getValue();
+  if (value !== true) return;
+  
+  // Generate invoice for this row
   try {
-    console.log('📄 generateInvoice() called');
-    
-    // Get active spreadsheet and sheet
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getActiveSheet();
-    const row = sheet.getActiveRange().getRow();
-    
-    if (row < 2) {
-      SpreadsheetApp.getUi().alert('⚠️ Please select a valid order row (row 1 is headers).');
-      return;
-    }
-    
     // Get row data
-    const data = sheet.getRange(row, 1, 1, 11).getValues()[0];
+    const data = sheet.getRange(row, 1, 1, 12).getValues()[0];
     
-    // Column mapping
-    const columns = {
-      timestamp: 0,
-      name: 1,
-      phone: 2,
-      address: 3,
-      area: 4,
-      fruit: 5,
-      pricePerBox: 6,
-      boxes: 7,
-      total: 8,
-      instructions: 9,
-      status: 10
-    };
-    
-    const name = data[columns.name] || 'Not provided';
-    const phone = data[columns.phone] || 'Not provided';
-    const address = data[columns.address] || 'Not provided';
-    const area = data[columns.area] || 'Not selected';
-    const fruit = data[columns.fruit] || 'Not selected';
-    const boxes = Number(data[columns.boxes]) || 0;
-    const price = Number(data[columns.pricePerBox]) || 45;
-    const total = Number(data[columns.total]) || 0;
-    const instructions = data[columns.instructions] || 'None';
-    const timestamp = data[columns.timestamp] || new Date();
+    const name = data[1] || 'Not provided';
+    const phone = data[2] || 'Not provided';
+    const address = data[3] || 'Not provided';
+    const area = data[4] || 'Not selected';
+    const fruit = data[5] || 'Not selected';
+    const price = Number(data[6]) || 45;
+    const boxes = Number(data[7]) || 0;
+    const total = Number(data[8]) || 0;
+    const instructions = data[9] || 'None';
+    const timestamp = data[0] || new Date();
     
     if (!name || name === 'Not provided') {
       SpreadsheetApp.getUi().alert('⚠️ This row has no customer data. Please select a valid order.');
+      // Uncheck the checkbox
+      range.setValue(false);
       return;
     }
     
@@ -250,194 +246,32 @@ function generateInvoice() {
     const now = new Date();
     const invNum = 'BH-' + now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0') + '-' + String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0') + '-' + String(row);
     
-    // ============================================================
-    // CREATE PDF USING jsPDF (via eval)
-    // ============================================================
-    // We'll use HtmlService to create the PDF
-    const htmlOutput = HtmlService
-      .createHtmlOutput(generateInvoiceHTML(name, phone, address, area, fruit, boxes, price, total, instructions, dateStr, timeStr, invNum))
-      .setWidth(400)
-      .setHeight(500);
+    // Create and download PDF
+    const pdfUrl = createInvoicePDF(name, phone, address, area, fruit, boxes, price, total, instructions, dateStr, timeStr, invNum);
     
-    SpreadsheetApp.getUi().showModalDialog(htmlOutput, '📄 Invoice Preview');
+    // Update Order Status to "Invoice Generated"
+    sheet.getRange(row, 11).setValue('Invoice Generated');
+    
+    // Uncheck the checkbox
+    range.setValue(false);
+    
+    // Show success message
+    SpreadsheetApp.getUi().alert('✅ Invoice generated successfully!\n\nInvoice #: ' + invNum + '\nPDF saved to your Drive.');
     
   } catch (error) {
-    SpreadsheetApp.getUi().alert('❌ Error: ' + error.toString());
-    console.log('❌ Error:', error);
+    console.log('❌ Error generating invoice:', error);
+    SpreadsheetApp.getUi().alert('❌ Error generating invoice: ' + error.toString());
+    // Uncheck the checkbox
+    range.setValue(false);
   }
 }
 
 // ============================================================
-// GENERATE INVOICE HTML FOR PREVIEW
+// CREATE INVOICE PDF AND SAVE TO DRIVE
 // ============================================================
-function generateInvoiceHTML(name, phone, address, area, fruit, boxes, price, total, instructions, dateStr, timeStr, invNum) {
-  return `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <base target="_top">
-        <style>
-          body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
-          .invoice-box {
-            max-width: 600px;
-            margin: auto;
-            padding: 20px;
-            border: 1px solid #eee;
-            background: #fff;
-            box-shadow: 0 0 10px rgba(0,0,0,0.15);
-            font-size: 14px;
-            line-height: 1.6;
-          }
-          .invoice-box h2 {
-            color: #2e7d32;
-            margin-top: 0;
-          }
-          .invoice-box .header {
-            border-bottom: 2px solid #2e7d32;
-            padding-bottom: 10px;
-            margin-bottom: 15px;
-          }
-          .invoice-box .details {
-            margin: 10px 0;
-          }
-          .invoice-box .details td {
-            padding: 5px 10px;
-          }
-          .invoice-box .details .label {
-            font-weight: bold;
-            width: 120px;
-          }
-          .invoice-box table {
-            width: 100%;
-            border-collapse: collapse;
-          }
-          .invoice-box table th {
-            background: #2e7d32;
-            color: #fff;
-            padding: 8px;
-            text-align: left;
-          }
-          .invoice-box table td {
-            padding: 8px;
-            border-bottom: 1px solid #ddd;
-          }
-          .invoice-box .total {
-            font-size: 18px;
-            font-weight: bold;
-            color: #c0392b;
-            text-align: right;
-            padding-top: 10px;
-          }
-          .invoice-box .footer {
-            margin-top: 20px;
-            padding-top: 10px;
-            border-top: 1px solid #ddd;
-            text-align: center;
-            color: #666;
-            font-size: 12px;
-          }
-          .btn-primary {
-            background: #2e7d32;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            font-size: 14px;
-            cursor: pointer;
-            margin-top: 15px;
-          }
-          .btn-primary:hover { background: #1b5e20; }
-          .btn-secondary {
-            background: #ccc;
-            color: #333;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            font-size: 14px;
-            cursor: pointer;
-            margin-top: 15px;
-          }
-          .btn-secondary:hover { background: #bbb; }
-          .text-center { text-align: center; }
-        </style>
-      </head>
-      <body>
-        <div class="invoice-box">
-          <div class="header">
-            <h2>🌿 Being Healthy</h2>
-            <p style="color: #666; margin-top: -5px;">Fresh Fruits · Delivered with Care</p>
-            <p><strong>Invoice #:</strong> ${invNum}</p>
-            <p><strong>Date:</strong> ${dateStr} &nbsp;|&nbsp; <strong>Time:</strong> ${timeStr}</p>
-          </div>
-
-          <h3>📋 Customer Details</h3>
-          <table class="details">
-            <tr><td class="label">Full Name:</td><td>${name}</td></tr>
-            <tr><td class="label">Phone:</td><td>${phone}</td></tr>
-            <tr><td class="label">Address:</td><td>${address}</td></tr>
-            <tr><td class="label">Area:</td><td>${area}</td></tr>
-          </table>
-
-          <h3>🛒 Order Summary</h3>
-          <table>
-            <thead>
-              <tr><th>Item</th><th>Fruit</th><th>Qty</th><th>Price</th><th>Total</th></tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Fresh Fruit Boxes</td>
-                <td>${fruit}</td>
-                <td>${boxes}</td>
-                <td>${price} AED</td>
-                <td>${total} AED</td>
-              </tr>
-            </tbody>
-          </table>
-          <div class="total">Total: ${total} AED</div>
-
-          <p style="margin-top: 10px;">
-            <strong>Delivery:</strong> ${area === 'Dubai' ? 'Dubai: Delivery within 2 days (except Sunday)' : 'Sharjah: Delivery on weekends only'}
-          </p>
-          <p style="color: #2e7d32;">✨ Free delivery on all orders</p>
-          
-          ${instructions && instructions !== 'None' ? `<p><strong>📝 Special Instructions:</strong><br>${instructions}</p>` : ''}
-
-          <div class="footer">
-            <p>Thank you for choosing Being Healthy!</p>
-            <p>Your trust in our fresh fruits means the world to us.</p>
-            <p>📞 +971 52 231 7016 &nbsp;|&nbsp; 📧 info@beinghealthy.ae</p>
-          </div>
-
-          <div class="text-center">
-            <button class="btn-primary" onclick="downloadPDF()">📥 Download PDF</button>
-            <button class="btn-secondary" onclick="google.script.host.close()">Close</button>
-          </div>
-        </div>
-
-        <script>
-          function downloadPDF() {
-            // This will trigger the server-side PDF generation
-            google.script.run
-              .withSuccessHandler(function() {
-                alert('✅ PDF downloaded successfully!');
-              })
-              .withFailureHandler(function(error) {
-                alert('❌ Error: ' + error);
-              })
-              .createAndDownloadPDF('${name}', '${phone}', '${address}', '${area}', '${fruit}', '${boxes}', '${price}', '${total}', '${instructions}', '${dateStr}', '${timeStr}', '${invNum}');
-          }
-        </script>
-      </body>
-    </html>
-  `;
-}
-
-// ============================================================
-// CREATE AND DOWNLOAD PDF (Server-side)
-// ============================================================
-function createAndDownloadPDF(name, phone, address, area, fruit, boxes, price, total, instructions, dateStr, timeStr, invNum) {
+function createInvoicePDF(name, phone, address, area, fruit, boxes, price, total, instructions, dateStr, timeStr, invNum) {
   try {
-    // Create a temporary HTML file with the invoice content
+    // Create HTML content for PDF
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -510,15 +344,24 @@ function createAndDownloadPDF(name, phone, address, area, fruit, boxes, price, t
       </html>
     `;
 
-    // Create a blob and save as PDF
+    // Create blob and save as PDF
     const blob = Utilities.newBlob(htmlContent, 'text/html', 'temp.html');
     const pdfBlob = blob.getAs('application/pdf');
     
-    // Save to Drive
-    const folder = DriveApp.getRootFolder();
-    const file = folder.createFile(pdfBlob).setName('BeingHealthy_Invoice_' + invNum + '.pdf');
+    // Save to Drive in a specific folder (optional)
+    const folderName = 'Being Healthy Invoices';
+    let folder = DriveApp.getFoldersByName(folderName);
+    let parentFolder;
     
-    // Return the download URL
+    if (folder.hasNext()) {
+      parentFolder = folder.next();
+    } else {
+      parentFolder = DriveApp.createFolder(folderName);
+    }
+    
+    const file = parentFolder.createFile(pdfBlob).setName('BeingHealthy_Invoice_' + invNum + '.pdf');
+    
+    console.log('✅ PDF saved to Drive:', file.getUrl());
     return file.getUrl();
     
   } catch (error) {
@@ -528,7 +371,7 @@ function createAndDownloadPDF(name, phone, address, area, fruit, boxes, price, t
 }
 
 // ============================================================
-// SETUP FUNCTIONS - Run these once in Apps Script
+// SETUP FUNCTIONS
 // ============================================================
 
 function setupOrdersSheet() {
@@ -553,13 +396,21 @@ function setupOrdersSheet() {
     'Number of Boxes',
     'Total Amount (AED)',
     'Special Instructions',
-    'Order Status'
+    'Order Status',
+    'Invoice'  // <-- NEW COLUMN
   ];
   
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
   sheet.setFrozenRows(1);
   sheet.getRange('A:A').setNumberFormat('yyyy-mm-dd hh:mm:ss');
+  
+  // Add checkbox in the Invoice column for all existing rows
+  const lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    const checkboxRange = sheet.getRange(2, 12, lastRow - 1, 1);
+    checkboxRange.insertCheckboxes();
+  }
   
   console.log('✅ Orders sheet setup complete!');
   console.log('📊 Sheet URL: ' + ss.getUrl());
@@ -605,14 +456,8 @@ function setupAll() {
 }
 
 // ============================================================
-// CREATE INVOICE BUTTON IN SHEET
+// TEST FUNCTIONS
 // ============================================================
-function onOpen() {
-  const ui = SpreadsheetApp.getUi();
-  const menu = ui.createMenu('📄 Invoice');
-  menu.addItem('Generate Invoice for Selected Row', 'generateInvoice');
-  menu.addToUi();
-}
 
 function testDoPost() {
   console.log('🧪 Running test...');
