@@ -9,7 +9,7 @@
 // ============================================================
 // CONFIGURATION
 // ============================================================
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx2ipkS3pI512EC3Q2AmUHciZENMFF0Xa3R5MWpP64dvk2pKeqUuZ1HWel7WKoM_WcX/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwXI76dGDkyGOyqLD6ae9-PEtVdUlloFoolPD9hPranboam-i5SZVZgSW5CzylZ3IPZ/exec';
 const MAX_BOXES = 5;
 
 let fruitPrices = {};
