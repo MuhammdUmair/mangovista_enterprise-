@@ -71,7 +71,7 @@ function doPost(e) {
       data.address || '',
       data.state || data.area || '',
       data.fruit || 'Mango (Sindhri)',
-      data.pricePerBox || 45,
+      data.pricePerBox || 55,
       data.boxes || 0,
       data.total || 0,
       data.instructions || '(none)',
